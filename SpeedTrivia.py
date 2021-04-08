@@ -36,9 +36,11 @@ def sms_send(target_number="+12316851234", message="Hello there!"):
 
 
 
-app = Flask(__name__)
+app = Flask(__name__) # TODO setup a public IP pointing to this server
 
-
+# Basic test functionality roadmap:
+#   Create a public facing Flask server.
+#   Accept SMS messages, Place in local perm storage, reply to SMS with greeting.
 
 @app.route("/sms", methods=["GET", "POST"])
 def sms_reply():
