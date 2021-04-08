@@ -24,7 +24,7 @@ password = sys.argv[1]
 account_sid = decrypt(encrypted_account_sid, password)
 auth_token = decrypt(encrypted_auth_token, password)
 client = Client(account_sid, auth_token)
-TWILLIO_SMS_NUMBER = "+15555555555"
+TWILLIO_SMS_NUMBER = "+18122038235" # Paoli native number bought from Twilio
 
 
 
