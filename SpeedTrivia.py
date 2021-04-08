@@ -48,11 +48,14 @@ from twilio.twiml.messaging_response import MessagingResponse
 
 
 
-password = sys.argv[1]
 # Find these values at https://twilio.com/user/account
 encrypted_account_sid = "vWFFuntfUAPQe/FTupv1OXV8AXWG5AaG8fzQp2ecunL7HA==*lmK4CGQhJTdlnZIJiVFmvQ==*DBCDTrmMz+oWPxgizpVkAA==*kaO0xIle1JPlQFS8syKmwQ=="
 encrypted_auth_token = "LJ0ctrM7RN1N7JS2tIm5hvfVX+F85RQmb8pXpyxYE+g=*Z5nguaX60YPaM7zs2r//Ew==*EMZDFrrPZfZsWVoehWZEug==*33yCyWvj08vvbYliZcAVuQ=="
-password = sys.argv[1]
+try:
+    password = sys.argv[1]
+except IndexError as e:
+    print(f'Password not found. Please append password to commandline.')
+    sys.exit(1)
 account_sid = decrypt(encrypted_account_sid, password)
 auth_token = decrypt(encrypted_auth_token, password)
 client = Client(account_sid, auth_token)
