@@ -7,6 +7,10 @@ ENV/
 env.bak/
 venv.bak/
 
+# Zips and Exe's
+*.zip
+*.exe
+
 # Distribution / packaging
 .Python
 build/
