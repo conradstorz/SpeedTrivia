@@ -45,7 +45,19 @@ from cryptocode import decrypt
 from twilio.rest import Client
 from flask import Flask, request, redirect
 from twilio.twiml.messaging_response import MessagingResponse
+from loguru import logger
+FILENAME = __file__
+# Begin logging definition
+logger.remove()  # removes the default console logger provided by Loguru.
+# I find it to be too noisy with details more appropriate for file logging.
 
+logger.add(
+    "".join([FILENAME, "_{time}.log"]),
+    rotation="Sunday",
+    level="DEBUG",
+    encoding="utf8"
+)
+# create a new log file for each run of the program
 
 
 # Find these values at https://twilio.com/user/account
@@ -62,16 +74,7 @@ client = Client(account_sid, auth_token)
 TWILLIO_SMS_NUMBER = "+18122038235" # Paoli native number bought from Twilio
 
 
-
-def sms_send(target_number="+12316851234", message="Hello there!"):
-    client.api.account.messages.create(
-        to=target_number, from_=TWILLIO_SMS_NUMBER, body=message
-    )
-    return True
-
-
-
-app = Flask(__name__) # TODO setup a public IP pointing to this server
+app = Flask(FILENAME)
 
 # Basic test functionality roadmap:
 #   Create a public facing Flask server.
@@ -80,10 +83,15 @@ app = Flask(__name__) # TODO setup a public IP pointing to this server
 @app.route("/sms", methods=["GET", "POST"])
 def sms_reply():
     """Respond to incoming calls with a simple text message."""
+    logger.debug('Message received. Strating response.')
     # Start our TwiML response
     resp = MessagingResponse()
+    logger.debug(resp)
     # Add a message
-    resp.message("The Robots are coming! Head for the hills!")
+    msg = "The Robots are coming! Head for the hills!"
+    logger.debug(msg)
+    resp.message(msg)
+    logger.debug(str(resp))
     return str(resp)
 
 
