@@ -53,41 +53,44 @@ CRAZY FUTURE FUNCTIONALITY:
 
 
 # Download the twilio-python library from twilio.com/docs/libraries/python
+import os
 import sys
-from cryptocode import decrypt
 from twilio.rest import Client
 from flask import Flask, request, redirect
 from twilio.twiml.messaging_response import MessagingResponse
 from loguru import logger
+
 FILENAME = __file__
+TWILLIO_SMS_NUMBER = "+18122038235" # Paoli native number bought from Twilio
+
 # Begin logging definition
 logger.remove()  # removes the default console logger provided by Loguru.
 # I find it to be too noisy with details more appropriate for file logging.
-
+# create a new log file for each run of the program
 logger.add(
     "".join([FILENAME, "_{time}.log"]),
     rotation="Sunday",
     level="DEBUG",
     encoding="utf8"
 )
-# create a new log file for each run of the program
+# end logging setup
 
-
-# Find these values at https://twilio.com/user/account
-encrypted_account_sid = "vWFFuntfUAPQe/FTupv1OXV8AXWG5AaG8fzQp2ecunL7HA==*lmK4CGQhJTdlnZIJiVFmvQ==*DBCDTrmMz+oWPxgizpVkAA==*kaO0xIle1JPlQFS8syKmwQ=="
-encrypted_auth_token = "LJ0ctrM7RN1N7JS2tIm5hvfVX+F85RQmb8pXpyxYE+g=*Z5nguaX60YPaM7zs2r//Ew==*EMZDFrrPZfZsWVoehWZEug==*33yCyWvj08vvbYliZcAVuQ=="
-try:
-    password = sys.argv[1]
-except IndexError as e:
-    print(f'Password not found. Please append password to commandline.')
+# Twilio token setup:
+CLIENT = None
+if not os.system("set ACCOUNT_SID"): # are these return values inverted?
+    if not os.system("set AUTH_TOKEN"): # seems like they would be true if the value exists.
+        ACCOUNT_SID = os.environ.get('ACCOUNT_SID')
+        AUTH_TOKEN = os.environ.get('AUTH_TOKEN')
+        CLIENT = Client(ACCOUNT_SID, AUTH_TOKEN)
+if CLIENT == None:
+    print('Client token not set. Did you load the environment variables?')
+    print('Did you re-start VScode?')
     sys.exit(1)
-account_sid = decrypt(encrypted_account_sid, password)
-auth_token = decrypt(encrypted_auth_token, password)
-client = Client(account_sid, auth_token)
-TWILLIO_SMS_NUMBER = "+18122038235" # Paoli native number bought from Twilio
 
 
-app = Flask(FILENAME)
+
+# Instantiate the Flask app
+app = Flask(__name__)
 
 # Basic test functionality roadmap:
 #   Create a public facing Flask server.
