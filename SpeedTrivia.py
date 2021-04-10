@@ -64,6 +64,11 @@ from twilio.twiml.messaging_response import MessagingResponse
 from loguru import logger
 import datetime as dt
 import pytz
+import nltk
+nltk.download('punkt')
+nltk.download('stopwords')
+nltk.download('averaged_perceptron_tagger')
+from nltk.corpus import stopwords 
 
 from collections import defaultdict
 def dict_default():
@@ -142,21 +147,51 @@ def sms_reply():
 
 
 def Respond_to(msid, sms_from, body_of_sms):
-    update_caller_database(msid, sms_from, body_of_sms)
+    response = update_caller_database(msid, sms_from, body_of_sms)
     logger.debug(players_database[sms_from])
-    if body_of_sms == 'Yay!': return ''
-    if body_of_sms == '': return 'Could you speak-up please.'
-    return "The Robots are coming! Head for the hills!"
+    return response
 
 
 def update_caller_database(msid, sms_from, body_of_sms):
-    players_database[sms_from]['Message_history'].append((msid, body_of_sms))
+    response = "The Robots are coming! Head for the hills "
+    response = ''.join([response, players_database[sms_from]['Caller_name']])
+    players_database[sms_from]['Message_history'].append((body_of_sms, msid))
     logger.debug(''.join(["Caller's Name: ", players_database[sms_from]['Caller_name']]))
     if players_database[sms_from]['First_call'] == None:
         logger.debug('First time caller.')
         players_database[sms_from]['First_call'] = dt.datetime.now(pytz.timezone("UTC"))
+        response = ask_caller_their_name()
     players_database[sms_from]['Recent_call'] = dt.datetime.now(pytz.timezone("UTC"))
+    if players_database[sms_from]['Caller_name'] == '':
+        check_sms_for_name(msid, sms_from, body_of_sms)
+    return response
+
+
+def ask_caller_their_name():
+    logger.debug('Asking the caller their name.')
+    return 'Could you tell me your name please? Please say My Name is x'
+
+
+def check_sms_for_name(msid, sms_from, body_of_sms):
+    # Function to extract the proper nouns 
+    def ProperNounExtractor(text):
+        sentences = nltk.sent_tokenize(text)
+        for sentence in sentences:
+            words = nltk.word_tokenize(sentence)
+            words = [word for word in words if word not in set(stopwords.words('english'))]
+            tagged = nltk.pos_tag(words)
+            for (word, tag) in tagged:
+                if tag == 'NNP': # If the word is a proper noun
+                    return word
+        return None
+    logger.debug('Searching the sms for the callers name.')
+    callername = ProperNounExtractor(body_of_sms)
+    if callername != None:
+        logger.debug('Found a name:')
+        logger.debug(callername)
+        players_database[sms_from]['Caller_name'] = callername
     return
+
 
 
 if __name__ == "__main__":
