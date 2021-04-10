@@ -59,18 +59,19 @@ FILENAME_PATHOBJ = Path(__file__)
 TWILLIO_SMS_NUMBER = "+18122038235"  # Paoli native number bought from Twilio
 DATABASE_PATHOBJ = Path("".join([FILENAME, ".db"]))
 COMMAND_WORDS = [
-    "Minus",
-    "Table",
-    "Team",
-    "Shuffle",
-    "Start",
-    "Status",
-    "Plus",
-    "Funny",
-    "Serious",
-    "ChangeName",
-    "ChangeTeam",
-    "time",
+    "Minus",  # remove a +1 from the caller's table.
+    "Table",  # return callers table name.
+    "Team",  # return Team name if exists or ask if None.
+    "Shuffle",  # CONTROLLER ONLY: re-shuffle table assignments
+    "Start",  # CONTROLLER ONLY: Lock-in the table assignments for thid game night.
+    "Status",  # return caller status info.
+    "Plus",  # add another +1 to the caller's table.
+    "Funny",  # return a random "funny" team name from a list.
+    "Serious",  # return a "serious" team name.
+    "ChangeName",  # delete the player name and ask for a new one.
+    "ChangeTeam",  # delete the team name and ask for a new one.
+    "time",  # return the HELP file with info on start time of game.
+    "Help",  # return the HELP file with info on using the app.
 ]
 COMMAND_ACTION = ""
 
