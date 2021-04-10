@@ -53,12 +53,26 @@ CRAZY FUTURE FUNCTIONALITY:
     
 """
 from pathlib import Path
+
 FILENAME = __file__
 FILENAME_PATHOBJ = Path(__file__)
-TWILLIO_SMS_NUMBER = "+18122038235" # Paoli native number bought from Twilio
-DATABASE_PATHOBJ = Path("".join([FILENAME, '.db']))
-COMMAND_WORDS = ['Minus', 'Table', 'Team', 'Shuffle', 'Start', 'Status', 'Plus', 'Funny', 'Serious', 'ChangeName', 'ChangeTeam','time']
-COMMAND_ACTION = ''
+TWILLIO_SMS_NUMBER = "+18122038235"  # Paoli native number bought from Twilio
+DATABASE_PATHOBJ = Path("".join([FILENAME, ".db"]))
+COMMAND_WORDS = [
+    "Minus",
+    "Table",
+    "Team",
+    "Shuffle",
+    "Start",
+    "Status",
+    "Plus",
+    "Funny",
+    "Serious",
+    "ChangeName",
+    "ChangeTeam",
+    "time",
+]
+COMMAND_ACTION = ""
 
 # Download the twilio-python library from twilio.com/docs/libraries/python
 import os
@@ -71,24 +85,29 @@ from pprint import pformat as pprint_dicts
 import datetime as dt
 import pytz
 import nltk
-nltk.download('punkt')
-nltk.download('stopwords')
-nltk.download('averaged_perceptron_tagger')
-from nltk.corpus import stopwords 
+
+nltk.download("punkt")
+nltk.download("stopwords")
+nltk.download("averaged_perceptron_tagger")
+from nltk.corpus import stopwords
 
 from collections import defaultdict
+
+
 def dict_default():
     sample_player_dict = {
-        'Caller_name': '',
-        'First_call': None,
-        'Recent_call': None,
-        'Plus_one': int(0), # represents number of extra seats reserved at the table
-        'Partners_history': [],
-        'Message_history': [],
+        "Caller_name": "",
+        "First_call": None,
+        "Recent_call": None,
+        "Plus_one": int(0),  # represents number of extra seats reserved at the table
+        "Partners_history": [],
+        "Message_history": [],
     }
     return sample_player_dict
+
+
 players_database = defaultdict(dict_default)
-players_database['root'] = 'root'
+players_database["root"] = "root"
 
 # variables:
 # Table names list [epsilon, gamma, delta, ...]
@@ -104,44 +123,46 @@ logger.add(
     "".join([FILENAME, "_{time}.log"]),
     rotation="Sunday",
     level="DEBUG",
-    encoding="utf8"
+    encoding="utf8",
 )
 # end logging setup
-logger.debug('Program started.')
+logger.debug("Program started.")
 
 
 # Save a dictionary into a pickle file.
 import pickle
+
 # pickle.dump( players_database, open( DATABASE_PATHOBJ, "wb" ) )
 # retrieve database:
 # players_database = pickle.load( open( DATABASE_PATHOBJ, "rb" ) )
 if DATABASE_PATHOBJ.exists():
-    logger.debug('Recovering pickle database...')
-    players_database = pickle.load( open( DATABASE_PATHOBJ, "rb" ) )
+    logger.debug("Recovering pickle database...")
+    players_database = pickle.load(open(DATABASE_PATHOBJ, "rb"))
 else:
-    logger.debug('Creating new pickle database...')
-    pickle.dump( players_database, open( DATABASE_PATHOBJ, "wb" ) )
-    
+    logger.debug("Creating new pickle database...")
+    pickle.dump(players_database, open(DATABASE_PATHOBJ, "wb"))
 
 
 # Twilio token setup:
 CLIENT = None
-if not os.system("set ACCOUNT_SID"): # are these return values inverted?
-    logger.debug('Twilio ACCOUNT_SID found.')
-    if not os.system("set AUTH_TOKEN"): # seems like they would be true if the value exists.
-        logger.debug('Twilio AUTH_TOKEN found, registering Twilio Client...')
-        ACCOUNT_SID = os.environ.get('ACCOUNT_SID')
-        AUTH_TOKEN = os.environ.get('AUTH_TOKEN')
+if not os.system("set ACCOUNT_SID"):  # are these return values inverted?
+    logger.debug("Twilio ACCOUNT_SID found.")
+    if not os.system(
+        "set AUTH_TOKEN"
+    ):  # seems like they would be true if the value exists.
+        logger.debug("Twilio AUTH_TOKEN found, registering Twilio Client...")
+        ACCOUNT_SID = os.environ.get("ACCOUNT_SID")
+        AUTH_TOKEN = os.environ.get("AUTH_TOKEN")
         CLIENT = Client(ACCOUNT_SID, AUTH_TOKEN)
-        logger.debug('Client token created:')
+        logger.debug("Client token created:")
         logger.debug(CLIENT)
 if CLIENT == None:
-    print('Client token not set. Did you load the environment variables?')
-    print('Did you re-start VScode?')
+    print("Client token not set. Did you load the environment variables?")
+    print("Did you re-start VScode?")
     sys.exit(1)
 
 
-logger.debug('Instantiating Flask App:')
+logger.debug("Instantiating Flask App:")
 SpeedTriviaApp = Flask(__name__)
 logger.debug(SpeedTriviaApp)
 
@@ -149,12 +170,12 @@ logger.debug(SpeedTriviaApp)
 @SpeedTriviaApp.route("/sms", methods=["GET", "POST"])
 def sms_reply():
     """Respond to incoming calls.
-        This is the entrypoint for SpeedTrivia functionality.
+    This is the entrypoint for SpeedTrivia functionality.
     """
-    logger.debug('Message received:')
-    sms_body = request.values.get('Body', None)
-    sms_from = request.values.get('From', None)
-    sms_MSID = request.values.get('MessageSid', None)
+    logger.debug("Message received:")
+    sms_body = request.values.get("Body", None)
+    sms_from = request.values.get("From", None)
+    sms_MSID = request.values.get("MessageSid", None)
     logger.debug(sms_MSID)
     logger.debug(sms_from)
     logger.debug(sms_body)
@@ -163,15 +184,15 @@ def sms_reply():
     logger.debug(sms_response)
     # Generate an appropriate response (if any)
     reply = Respond_to(sms_MSID, sms_from, sms_body)
-    if reply == '':
-        logger.debug('No response needed.')
+    if reply == "":
+        logger.debug("No response needed.")
     else:
         logger.debug(reply)
     sms_response.message(reply)
     logger.debug(str(sms_response))
-    logger.debug('Updating database...')
-    pickle.dump( players_database, open( DATABASE_PATHOBJ, "wb" ) )
-    logger.debug('Returning control to Flask.')
+    logger.debug("Updating database...")
+    pickle.dump(players_database, open(DATABASE_PATHOBJ, "wb"))
+    logger.debug("Returning control to Flask.")
     return str(sms_response)
 
 
@@ -183,29 +204,35 @@ def Respond_to(msid, sms_from, body_of_sms):
         if word in body_of_sms:
             COMMAND_ACTION[word](msid, sms_from, body_of_sms)
     else:
-        logger.debug('No command words found in this SMS.')        
+        logger.debug("No command words found in this SMS.")
     return response
 
 
 def update_caller_database(msid, sms_from, body_of_sms):
     response = "The Robots are coming!  LoL  Head for the hills "
-    response = ''.join([response, players_database[sms_from]['Caller_name']])
-    players_database[sms_from]['Message_history'].append((body_of_sms, msid))
-    logger.debug(''.join(["Caller's Name: ", players_database[sms_from]['Caller_name']]))
-    if players_database[sms_from]['First_call'] == None:
-        logger.debug('First time caller.')
-        players_database[sms_from]['First_call'] = dt.datetime.now(pytz.timezone("UTC"))
+    response = "".join([response, players_database[sms_from]["Caller_name"]])
+    players_database[sms_from]["Message_history"].append((body_of_sms, msid))
+    logger.debug(
+        "".join(["Caller's Name: ", players_database[sms_from]["Caller_name"]])
+    )
+    if players_database[sms_from]["First_call"] == None:
+        logger.debug("First time caller.")
+        players_database[sms_from]["First_call"] = dt.datetime.now(pytz.timezone("UTC"))
         response = ask_caller_their_name()
-        players_database[sms_from]['Recent_call'] = dt.datetime.now(pytz.timezone("UTC"))
+        players_database[sms_from]["Recent_call"] = dt.datetime.now(
+            pytz.timezone("UTC")
+        )
     else:
-        if players_database[sms_from]['Caller_name'] == '':
+        if players_database[sms_from]["Caller_name"] == "":
             response = check_sms_for_name(msid, sms_from, body_of_sms)
-        players_database[sms_from]['Recent_call'] = dt.datetime.now(pytz.timezone("UTC"))    
+        players_database[sms_from]["Recent_call"] = dt.datetime.now(
+            pytz.timezone("UTC")
+        )
     return response
 
 
 def ask_caller_their_name():
-    logger.debug('Asking the caller their name.')
+    logger.debug("Asking the caller their name.")
     return "Hello! I don't have your number in my records. Could you please tell me your name?"
 
 
@@ -216,25 +243,29 @@ def check_sms_for_name(msid, sms_from, body_of_sms):
         sentences = nltk.sent_tokenize(text)
         for sentence in sentences:
             words = nltk.word_tokenize(sentence)
-            words = [word for word in words if word not in set(stopwords.words('english'))]
+            words = [
+                word for word in words if word not in set(stopwords.words("english"))
+            ]
             tagged = nltk.pos_tag(words)
             for (word, tag) in tagged:
-                if tag == 'NNP': # If the word is a proper noun
+                if tag == "NNP":  # If the word is a proper noun
                     return word
         return None
-    logger.debug('Searching the sms for the callers name.')
+
+    logger.debug("Searching the sms for the callers name.")
     callername = ProperNounExtractor(body_of_sms)
     if callername != None:
-        logger.debug('Found a name:')
+        logger.debug("Found a name:")
         logger.debug(callername)
-        players_database[sms_from]['Caller_name'] = callername
+        players_database[sms_from]["Caller_name"] = callername
     else:
         logger.debug("Couldn't find a name.")
         return "Sorry. I didn't understand.  Please try again. Feel free to speak in full sentences."
-    return "".join(['Thanks ', callername, '! Glad to meet you. Welcome to SpeedTrivia.'])
-
+    return "".join(
+        ["Thanks ", callername, "! Glad to meet you. Welcome to SpeedTrivia."]
+    )
 
 
 if __name__ == "__main__":
-    logger.debug('Program is being run as __main__')
+    logger.debug("Program is being run as __main__")
     SpeedTriviaApp.run(debug=True)
