@@ -57,6 +57,8 @@ FILENAME = __file__
 FILENAME_PATHOBJ = Path(__file__)
 TWILLIO_SMS_NUMBER = "+18122038235" # Paoli native number bought from Twilio
 DATABASE_PATHOBJ = Path("".join([FILENAME, '.db']))
+COMMAND_WORDS = ['Minus', 'Table', 'Team', 'Shuffle', 'Start', 'Status', 'Plus', 'Funny', 'Serious', 'ChangeName', 'ChangeTeam','time']
+COMMAND_ACTION = ''
 
 # Download the twilio-python library from twilio.com/docs/libraries/python
 import os
@@ -87,6 +89,11 @@ def dict_default():
     return sample_player_dict
 players_database = defaultdict(dict_default)
 players_database['root'] = 'root'
+
+# variables:
+# Table names list [epsilon, gamma, delta, ...]
+# Team names (funny, serious, classic...) for people to ask for ideas
+# number of players per table
 
 
 # Begin logging definition
@@ -135,13 +142,9 @@ if CLIENT == None:
 
 
 logger.debug('Instantiating Flask App:')
-# Instantiate the Flask app
 SpeedTriviaApp = Flask(__name__)
 logger.debug(SpeedTriviaApp)
 
-# Basic test functionality roadmap:
-#   Create a public facing Flask server.
-#   Accept SMS messages, Place in local perm storage, reply to SMS with greeting.
 
 @SpeedTriviaApp.route("/sms", methods=["GET", "POST"])
 def sms_reply():
@@ -175,6 +178,12 @@ def sms_reply():
 def Respond_to(msid, sms_from, body_of_sms):
     response = update_caller_database(msid, sms_from, body_of_sms)
     logger.debug(pprint_dicts(players_database[sms_from]))
+    # TODO additional processing here
+    for word in COMMAND_WORDS:
+        if word in body_of_sms:
+            COMMAND_ACTION[word](msid, sms_from, body_of_sms)
+    else:
+        logger.debug('No command words found in this SMS.')        
     return response
 
 
@@ -201,8 +210,9 @@ def ask_caller_their_name():
 
 
 def check_sms_for_name(msid, sms_from, body_of_sms):
-    # Function to extract the proper nouns 
+    # Function to extract the proper nouns from free form text.
     def ProperNounExtractor(text):
+        # if text is only a single word, like 'Doug', this routine does not identify it as a name.
         sentences = nltk.sent_tokenize(text)
         for sentence in sentences:
             words = nltk.word_tokenize(sentence)
