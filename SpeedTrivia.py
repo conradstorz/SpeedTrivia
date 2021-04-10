@@ -52,8 +52,11 @@ CRAZY FUTURE FUNCTIONALITY:
     Deployment to production can then point Twilio back to Conradical.pythonAnywhere.com 
     
 """
-
-
+from pathlib import Path
+FILENAME = __file__
+FILENAME_PATHOBJ = Path(__file__)
+TWILLIO_SMS_NUMBER = "+18122038235" # Paoli native number bought from Twilio
+DATABASE_PATHOBJ = Path("".join([FILENAME, '.db']))
 
 # Download the twilio-python library from twilio.com/docs/libraries/python
 import os
@@ -62,6 +65,7 @@ from twilio.rest import Client
 from flask import Flask, request, redirect
 from twilio.twiml.messaging_response import MessagingResponse
 from loguru import logger
+from pprint import pformat as pprint_dicts
 import datetime as dt
 import pytz
 import nltk
@@ -82,9 +86,8 @@ def dict_default():
     }
     return sample_player_dict
 players_database = defaultdict(dict_default)
+players_database['root'] = 'root'
 
-FILENAME = __file__
-TWILLIO_SMS_NUMBER = "+18122038235" # Paoli native number bought from Twilio
 
 # Begin logging definition
 logger.remove()  # removes the default console logger provided by Loguru.
@@ -98,6 +101,21 @@ logger.add(
 )
 # end logging setup
 logger.debug('Program started.')
+
+
+# Save a dictionary into a pickle file.
+import pickle
+# pickle.dump( players_database, open( DATABASE_PATHOBJ, "wb" ) )
+# retrieve database:
+# players_database = pickle.load( open( DATABASE_PATHOBJ, "rb" ) )
+if DATABASE_PATHOBJ.exists():
+    logger.debug('Recovering pickle database...')
+    players_database = pickle.load( open( DATABASE_PATHOBJ, "rb" ) )
+else:
+    logger.debug('Creating new pickle database...')
+    pickle.dump( players_database, open( DATABASE_PATHOBJ, "wb" ) )
+    
+
 
 # Twilio token setup:
 CLIENT = None
@@ -127,7 +145,9 @@ logger.debug(SpeedTriviaApp)
 
 @SpeedTriviaApp.route("/sms", methods=["GET", "POST"])
 def sms_reply():
-    """Respond to incoming calls with a simple text message."""
+    """Respond to incoming calls.
+        This is the entrypoint for SpeedTrivia functionality.
+    """
     logger.debug('Message received:')
     sms_body = request.values.get('Body', None)
     sms_from = request.values.get('From', None)
@@ -135,25 +155,31 @@ def sms_reply():
     logger.debug(sms_MSID)
     logger.debug(sms_from)
     logger.debug(sms_body)
-    # Start our TwiML response
+    # Start our TwiML response by creating a new response object.
     sms_response = MessagingResponse()
     logger.debug(sms_response)
-    # Get apprpriate response
+    # Generate an appropriate response (if any)
     reply = Respond_to(sms_MSID, sms_from, sms_body)
-    logger.debug(reply)
+    if reply == '':
+        logger.debug('No response needed.')
+    else:
+        logger.debug(reply)
     sms_response.message(reply)
     logger.debug(str(sms_response))
+    logger.debug('Updating database...')
+    pickle.dump( players_database, open( DATABASE_PATHOBJ, "wb" ) )
+    logger.debug('Returning control to Flask.')
     return str(sms_response)
 
 
 def Respond_to(msid, sms_from, body_of_sms):
     response = update_caller_database(msid, sms_from, body_of_sms)
-    logger.debug(players_database[sms_from])
+    logger.debug(pprint_dicts(players_database[sms_from]))
     return response
 
 
 def update_caller_database(msid, sms_from, body_of_sms):
-    response = "The Robots are coming! Head for the hills "
+    response = "The Robots are coming!  LoL  Head for the hills "
     response = ''.join([response, players_database[sms_from]['Caller_name']])
     players_database[sms_from]['Message_history'].append((body_of_sms, msid))
     logger.debug(''.join(["Caller's Name: ", players_database[sms_from]['Caller_name']]))
@@ -161,15 +187,17 @@ def update_caller_database(msid, sms_from, body_of_sms):
         logger.debug('First time caller.')
         players_database[sms_from]['First_call'] = dt.datetime.now(pytz.timezone("UTC"))
         response = ask_caller_their_name()
-    players_database[sms_from]['Recent_call'] = dt.datetime.now(pytz.timezone("UTC"))
-    if players_database[sms_from]['Caller_name'] == '':
-        check_sms_for_name(msid, sms_from, body_of_sms)
+        players_database[sms_from]['Recent_call'] = dt.datetime.now(pytz.timezone("UTC"))
+    else:
+        if players_database[sms_from]['Caller_name'] == '':
+            response = check_sms_for_name(msid, sms_from, body_of_sms)
+        players_database[sms_from]['Recent_call'] = dt.datetime.now(pytz.timezone("UTC"))    
     return response
 
 
 def ask_caller_their_name():
     logger.debug('Asking the caller their name.')
-    return 'Could you tell me your name please? Please say My Name is x'
+    return "Hello! I don't have your number in my records. Could you please tell me your name?"
 
 
 def check_sms_for_name(msid, sms_from, body_of_sms):
@@ -190,7 +218,10 @@ def check_sms_for_name(msid, sms_from, body_of_sms):
         logger.debug('Found a name:')
         logger.debug(callername)
         players_database[sms_from]['Caller_name'] = callername
-    return
+    else:
+        logger.debug("Couldn't find a name.")
+        return "Sorry. I didn't understand.  Please try again. Feel free to speak in full sentences."
+    return "".join(['Thanks ', callername, '! Glad to meet you. Welcome to SpeedTrivia.'])
 
 
 
