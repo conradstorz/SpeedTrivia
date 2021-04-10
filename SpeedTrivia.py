@@ -62,6 +62,21 @@ from twilio.rest import Client
 from flask import Flask, request, redirect
 from twilio.twiml.messaging_response import MessagingResponse
 from loguru import logger
+import datetime as dt
+import pytz
+
+from collections import defaultdict
+def dict_default():
+    sample_player_dict = {
+        'Caller_name': '',
+        'First_call': None,
+        'Recent_call': None,
+        'Plus_one': int(0), # represents number of extra seats reserved at the table
+        'Partners_history': [],
+        'Message_history': [],
+    }
+    return sample_player_dict
+players_database = defaultdict(dict_default)
 
 FILENAME = __file__
 TWILLIO_SMS_NUMBER = "+18122038235" # Paoli native number bought from Twilio
@@ -77,23 +92,29 @@ logger.add(
     encoding="utf8"
 )
 # end logging setup
+logger.debug('Program started.')
 
 # Twilio token setup:
 CLIENT = None
 if not os.system("set ACCOUNT_SID"): # are these return values inverted?
+    logger.debug('Twilio ACCOUNT_SID found.')
     if not os.system("set AUTH_TOKEN"): # seems like they would be true if the value exists.
+        logger.debug('Twilio AUTH_TOKEN found, registering Twilio Client...')
         ACCOUNT_SID = os.environ.get('ACCOUNT_SID')
         AUTH_TOKEN = os.environ.get('AUTH_TOKEN')
         CLIENT = Client(ACCOUNT_SID, AUTH_TOKEN)
+        logger.debug('Client token created:')
+        logger.debug(CLIENT)
 if CLIENT == None:
     print('Client token not set. Did you load the environment variables?')
     print('Did you re-start VScode?')
     sys.exit(1)
 
 
-
+logger.debug('Instantiating Flask App:')
 # Instantiate the Flask app
 SpeedTriviaApp = Flask(__name__)
+logger.debug(SpeedTriviaApp)
 
 # Basic test functionality roadmap:
 #   Create a public facing Flask server.
@@ -102,18 +123,42 @@ SpeedTriviaApp = Flask(__name__)
 @SpeedTriviaApp.route("/sms", methods=["GET", "POST"])
 def sms_reply():
     """Respond to incoming calls with a simple text message."""
-    logger.debug('Message received. Strating response.')
+    logger.debug('Message received:')
+    sms_body = request.values.get('Body', None)
+    sms_from = request.values.get('From', None)
+    sms_MSID = request.values.get('MessageSid', None)
+    logger.debug(sms_MSID)
+    logger.debug(sms_from)
+    logger.debug(sms_body)
     # Start our TwiML response
-    resp = MessagingResponse()
-    logger.debug(resp)
-    # Add a message
-    msg = "The Robots are coming! Head for the hills!"
-    logger.debug(msg)
-    resp.message(msg)
-    logger.debug(str(resp))
-    return str(resp)
+    sms_response = MessagingResponse()
+    logger.debug(sms_response)
+    # Get apprpriate response
+    reply = Respond_to(sms_MSID, sms_from, sms_body)
+    logger.debug(reply)
+    sms_response.message(reply)
+    logger.debug(str(sms_response))
+    return str(sms_response)
 
+
+def Respond_to(msid, sms_from, body_of_sms):
+    update_caller_database(msid, sms_from, body_of_sms)
+    logger.debug(players_database[sms_from])
+    if body_of_sms == 'Yay!': return ''
+    if body_of_sms == '': return 'Could you speak-up please.'
+    return "The Robots are coming! Head for the hills!"
+
+
+def update_caller_database(msid, sms_from, body_of_sms):
+    players_database[sms_from]['Message_history'].append((msid, body_of_sms))
+    logger.debug(''.join(["Caller's Name: ", players_database[sms_from]['Caller_name']]))
+    if players_database[sms_from]['First_call'] == None:
+        logger.debug('First time caller.')
+        players_database[sms_from]['First_call'] = dt.datetime.now(pytz.timezone("UTC"))
+    players_database[sms_from]['Recent_call'] = dt.datetime.now(pytz.timezone("UTC"))
+    return
 
 
 if __name__ == "__main__":
+    logger.debug('Program is being run as __main__')
     SpeedTriviaApp.run(debug=True)
