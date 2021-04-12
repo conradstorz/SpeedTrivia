@@ -52,13 +52,73 @@ CRAZY FUTURE FUNCTIONALITY:
     Deployment to production can then point Twilio back to Conradical.pythonAnywhere.com 
     
 """
+
+# Download the twilio-python library from twilio.com/docs/libraries/python
+import os
+import sys
+from twilio.rest import Client
+from flask import Flask, request, redirect
+from twilio.twiml.messaging_response import MessagingResponse
+from loguru import logger
+from pprint import pformat as pprint_dicts
+import datetime as dt
 from pathlib import Path
+import pytz
+import nltk
+nltk.download("punkt")
+nltk.download("stopwords")
+nltk.download("averaged_perceptron_tagger")
+from nltk.corpus import stopwords
+from collections import defaultdict
+import random
 
 FILENAME = __file__
 FILENAME_PATHOBJ = Path(__file__)
 TWILLIO_SMS_NUMBER = "+18122038235"  # Paoli native number bought from Twilio
 DATABASE_PATHOBJ = Path("".join([FILENAME, ".db"]))
+TABLESIZE = 3
+CONTROLLER = "+18125577095"
+FROZEN = False
 
+# Begin logging definition
+logger.remove()  # removes the default console logger provided by Loguru.
+# I find it to be too noisy with details more appropriate for file logging.
+# create a new log file for each run of the program
+logger.add(
+    "".join([FILENAME, "_{time}.log"]),
+    rotation="Sunday",
+    level="DEBUG",
+    encoding="utf8",
+)
+# end logging setup
+logger.info("Program started.")
+
+# begin definition of default dict for players
+CALLERNAME_KEY = "Caller_name"
+FIRSTCALL_KEY = "First_call"
+RECENTCALL_KEY = "Recent_Call"
+PLUSONE_KEY = "Plus_one"
+PARTNERHISTORY_KEY = "Partners_history"
+MESSAGEHISTORY_KEY = "Message_history"
+CURRENT_TABLE_ASSIGNMENT = "Current_Table"
+CURRENT_TEAM_NAME = "Current_team"
+def dict_default():
+    sample_player_dict = {
+        CALLERNAME_KEY: "",
+        CURRENT_TABLE_ASSIGNMENT: "Undefined",
+        CURRENT_TEAM_NAME: "notset",
+        PLUSONE_KEY: int(0),  # represents number of extra seats reserved at the table
+        PARTNERHISTORY_KEY: [],
+        MESSAGEHISTORY_KEY: [],
+        FIRSTCALL_KEY: None,
+        RECENTCALL_KEY: None,        
+    }
+    return sample_player_dict
+players_database = defaultdict(dict_default)
+players_database["root"] = "root"
+
+def ReturnCommandList(msid, sms_from, body_of_sms):
+    return str(COMMANDS.keys())
 
 def RemoveReservation(msid, sms_from, body_of_sms):
     """Players can reserve extra seats at their table for special guests.
@@ -66,15 +126,22 @@ def RemoveReservation(msid, sms_from, body_of_sms):
     at the same table by design. (e.g. a non-player or spouse.)
     """
     logger.info('Remove a plus one from player function entered.')
-    return msid
-
+    players_database[sms_from][PLUSONE_KEY] -= 1
+    return "".join([
+        "You now have ", 
+        str(players_database[sms_from][PLUSONE_KEY]),
+        " extra seats at your table."
+        ])
 
 def ReturnTableName(msid, sms_from, body_of_sms):
     """Table name is an index value. (e.g. Gamma, delta, epsilon...)
     """
     logger.info('return player team table label function entered.')
-    return msid
-
+    return "".join([
+        "Your table is ", 
+        players_database[sms_from][CURRENT_TABLE_ASSIGNMENT],
+        "."
+        ])
 
 def SetTeamName(msid, sms_from, body_of_sms):
     """Team name is the formal name. (e.g. 'Fools for the Trivia')
@@ -83,20 +150,48 @@ def SetTeamName(msid, sms_from, body_of_sms):
     logger.info('Set team name function entered.')
     return msid
 
+def Tonights_players():
+    tp_list = []
+    # TODO filter out records from past weeks.
+    # Do not count players that have not been in touch for tonights game.
+    for k in players_database.keys():
+        if len(k) == 12: 
+            tp_list.append(k)
+    return tp_list
 
 def ReturnStatus(msid, sms_from, body_of_sms):
     """Return various details of this player.
     """
     logger.info('Send status to player function entered.')
-    return msid
-
+    if sms_from == CONTROLLER:
+        stat = "".join([
+            "status: ",
+            str(TABLESIZE),
+            " per table. ",
+            str(len(Tonights_players())),
+            " players registered.",
+        ])
+    else:
+        stat = "".join([
+            players_database[sms_from][CALLERNAME_KEY],
+            " your table name is ",
+            players_database[sms_from][CURRENT_TABLE_ASSIGNMENT],
+            " and you have ",
+            players_database[sms_from][CURRENT_TABLE_ASSIGNMENT],
+            " extra seats reserved.",
+        ])        
+    return stat
 
 def AddReservation(msid, sms_from, body_of_sms):
     """Add a +1 to this players table.
     """
     logger.info('Add a plue one function entered.')
-    return msid
-
+    players_database[sms_from][PLUSONE_KEY] += 1
+    return "".join([
+        "You now have ", 
+        str(players_database[sms_from][PLUSONE_KEY]),
+        " extra seats at your table."
+        ])
 
 def SuggestFunny(msid, sms_from, body_of_sms):
     """Return some ideas for team names.
@@ -104,13 +199,11 @@ def SuggestFunny(msid, sms_from, body_of_sms):
     logger.info('Funny team name suggestions entered.')
     return msid
 
-
 def SuggestSerious(msid, sms_from, body_of_sms):
     """Suggest only serious names.
     """
     logger.info('Serious team name suggestions entered.')
     return msid
-
 
 def ChangePlayerName(msid, sms_from, body_of_sms):
     """Allow player to correct their own name.
@@ -128,13 +221,11 @@ def ChangeTeamName(msid, sms_from, body_of_sms):
     logger.info('Change team name function entered.')
     return msid
 
-
 def ReturnHelpInfo(msid, sms_from, body_of_sms):
     """Returns basic info about this app and the trivia competition.
     """
-    logger.info('Help info entered.')
+    logger.info('Help info function entered.')
     return msid
-
 
 def ShuffleTables(msid, sms_from, body_of_sms):
     """Primary function of this app is to match players to tables.
@@ -143,17 +234,51 @@ def ShuffleTables(msid, sms_from, body_of_sms):
     Shuffle will try repeatedly to find a solution that exposes the maximum number of
     players to players that they have not played against before.
     """
-    logger.info('Shuffle players entered.')
-    return msid
-
+    def extra_players(player_list):
+        plus_ones = 0
+        for player in player_list:  # Find all the extra players in this list.
+            plus_ones += players_database[player][PLUSONE_KEY]  
+        logger.debug("".join([str(plus_ones), " Extra players"]))
+        return plus_ones     
+    def Assign_Tables(tables, players):
+        def open_chairs(table):
+            open_chrs = TABLESIZE - len(table)  # Don't include +1s here
+            logger.debug("".join([str(open_chrs), " Open chairs."]))
+            if open_chrs < 1:
+                return 0
+            return open_chrs
+        tbl_dict = defaultdict(list)
+        for player in players:
+            while player != None:
+                rnd_table = random.choice(tables)
+                logger.debug("".join([str(rnd_table), " random table."]))
+                if open_chairs(tbl_dict[rnd_table]) > 0:
+                    tbl_dict[rnd_table].append(player)
+                    logger.debug("".join([player, " assigned to table."]))
+                    player = None
+        return tbl_dict
+    table_names = ['gamma', 'epsilon', 'delta', 'alpha', 'kappa', 'sigma', 'beta', 'theta']
+    logger.info('Shuffle players function entered.')
+    registered_players = Tonights_players()
+    logger.debug("".join([str(registered_players), " Tonights players.",]))
+    total_players = len(registered_players) + extra_players(registered_players)
+    logger.debug("".join([str(total_players), " Total players."]))
+    number_of_tables = int(len(registered_players) / TABLESIZE)  # We want the tables based on registered players only.
+    if number_of_tables < 1:
+        number_of_tables = 1
+    tables = table_names[:number_of_tables]
+    logger.debug("".join([str(tables), " Tonights tables."]))
+    proposed_tables = Assign_Tables(tables, registered_players)
+    logger.info(pprint_dicts(proposed_tables))
+    return "Players have been assigned tables."
 
 def StartGame(msid, sms_from, body_of_sms):
     """Locks-in the table assignments and updates each player's database to record
     the event of these players being at the same table.
     """
     logger.info('Start game night entered.')
+    # TODO
     return msid
-
 
 def ChangeTeamSize(msid, sms_from, body_of_sms):
     """Sets the maximum target size for tables.
@@ -161,11 +286,23 @@ def ChangeTeamSize(msid, sms_from, body_of_sms):
     Generaly that will only happen if a team wants to have more +1's than 
     the normal table size.
     """
+    global TABLESIZE # needed because I want to change the global value
     logger.info('Change team size function entered.')
-    return msid
-
+    parts = str(body_of_sms).split()
+    number = 0
+    for part in parts:
+        try:
+            number = int(part)
+        except:
+            pass
+    if number > 0:
+        TABLESIZE = number
+    else:
+        return "Error. New table size not understood."
+    return "".join(['New table size = ', str(TABLESIZE)])
 
 COMMANDS = {
+    "Commands": ReturnCommandList,  # return this list of keys.
     "Minus": RemoveReservation,  # remove a +1 from the caller's table.
     "Table": ReturnTableName,  # return callers table name.
     "Team": SetTeamName,  # return Team name if exists or ask if None.
@@ -184,68 +321,6 @@ COMMANDS = {
 CONTROLLER_ONLY_COMMANDS = [
     "Shuffle", "Start", "Size",
 ]
-
-
-
-# Download the twilio-python library from twilio.com/docs/libraries/python
-import os
-import sys
-from twilio.rest import Client
-from flask import Flask, request, redirect
-from twilio.twiml.messaging_response import MessagingResponse
-from loguru import logger
-from pprint import pformat as pprint_dicts
-import datetime as dt
-import pytz
-import nltk
-
-nltk.download("punkt")
-nltk.download("stopwords")
-nltk.download("averaged_perceptron_tagger")
-from nltk.corpus import stopwords
-
-from collections import defaultdict
-
-CALLERNAME_KEY = "Caller_name"
-FIRSTCALL_KEY = "First_call"
-RECENTCALL_KEY = "Recent_Call"
-PLUSONE_KEY = "Plus_one"
-PARTNERHISTORY_KEY = "Partners_history"
-MESSAGEHISTORY_KEY = "Message_history"
-def dict_default():
-    sample_player_dict = {
-        CALLERNAME_KEY: "",
-        FIRSTCALL_KEY: None,
-        RECENTCALL_KEY: None,
-        PLUSONE_KEY: int(0),  # represents number of extra seats reserved at the table
-        PARTNERHISTORY_KEY: [],
-        MESSAGEHISTORY_KEY: [],
-    }
-    return sample_player_dict
-
-
-players_database = defaultdict(dict_default)
-players_database["root"] = "root"
-
-# variables:
-# Table names list [epsilon, gamma, delta, ...]
-# Team names (funny, serious, classic...) for people to ask for ideas
-# number of players per table
-
-
-# Begin logging definition
-logger.remove()  # removes the default console logger provided by Loguru.
-# I find it to be too noisy with details more appropriate for file logging.
-# create a new log file for each run of the program
-logger.add(
-    "".join([FILENAME, "_{time}.log"]),
-    rotation="Sunday",
-    level="DEBUG",
-    encoding="utf8",
-)
-# end logging setup
-logger.info("Program started.")
-
 
 # Save a dictionary into a pickle file.
 import pickle
@@ -279,6 +354,13 @@ if CLIENT == None:
     print("Did you re-start VScode?")
     sys.exit(1)
 
+def Send_SMS(text, receipient):
+    return CLIENT.messages.create(
+    body=text,
+    from_=TWILLIO_SMS_NUMBER,
+    to=receipient
+    )
+print(Send_SMS("SpeedTrivia program start.", '+18125577095'))
 
 logger.info("Instantiating Flask App:")
 SpeedTriviaApp = Flask(__name__)
@@ -317,13 +399,19 @@ def sms_reply():
 def Respond_to(msid, sms_from, body_of_sms):
     response = update_caller_database(msid, sms_from, body_of_sms)
     logger.info(pprint_dicts(players_database[sms_from]))
-    # TODO additional processing here
     cmnds = COMMANDS.keys()
     logger.info(cmnds)
     for word in cmnds:
         if word.lower() in str(body_of_sms).lower():
             logger.info("".join(['Found command: ', word]))
-            response = COMMANDS[word](msid, sms_from, body_of_sms)
+            if word in CONTROLLER_ONLY_COMMANDS:
+                if sms_from == CONTROLLER:
+                    response = COMMANDS[word](msid, sms_from, body_of_sms)
+                else:
+                    logger.info('Command not available to this user.')
+                    response = 'Sorry, That command is only available to the controller of this app.'
+            else:
+                response = COMMANDS[word](msid, sms_from, body_of_sms)
         else:
             logger.debug("".join(['Did not find ', word, ' in ', str(body_of_sms)]))
     else:
@@ -335,6 +423,9 @@ def update_caller_database(msid, sms_from, body_of_sms):
     response = "The Robots are coming!  LoL  Head for the hills "
     response = "".join([response, players_database[sms_from][CALLERNAME_KEY]])
     players_database[sms_from][MESSAGEHISTORY_KEY].append((body_of_sms, msid))
+    messages_list = players_database[sms_from][MESSAGEHISTORY_KEY]
+    # truncate list at last 5 messages.
+    players_database[sms_from][MESSAGEHISTORY_KEY] = messages_list[-5:]
     logger.info(
         "".join(["Caller's Name: ", players_database[sms_from][CALLERNAME_KEY]])
     )
