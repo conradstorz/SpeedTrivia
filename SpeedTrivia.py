@@ -83,11 +83,15 @@ import random
 FILENAME = __file__
 FILENAME_PATHOBJ = Path(__file__)
 PROGRAM_START_TIME = dt.datetime.now(pytz.timezone("UTC"))
+
+
 def how_long_ago_is(past_time):
     delta_ = dt.datetime.now(pytz.timezone("UTC")) - past_time
     days_ = delta_ / dt.timedelta(days=1)
     logger.debug("".join(["Time since ", str(days_)]))
     return days_
+
+
 TWILLIO_SMS_NUMBER = "+18122038235"  # Paoli native number bought from Twilio
 DATABASE_PATHOBJ = Path("".join([FILENAME, ".db"]))
 TABLESIZE = 3
@@ -95,7 +99,9 @@ CONTROLLER = "+18125577095"
 FROZEN = False
 least_meetups = dict()  # A global that is defined within the 'ShuffleTables' function
 TABLE_ASSIGNED = dict()  # A global that is defined within the 'ShuffleTables' function
-TONIGHTS_PLAYERS = list()  # A global that is defined within the 'ShuffleTables' function
+TONIGHTS_PLAYERS = (
+    list()
+)  # A global that is defined within the 'ShuffleTables' function
 
 # Begin logging definition
 logger.remove()  # removes the default console logger provided by Loguru.
@@ -134,11 +140,14 @@ def dict_default():
     }
     return sample_player_dict
 
+
 players_database = defaultdict(dict_default)
 players_database["root"] = "root"
 
+
 def ReturnCommandList(msid, sms_from, body_of_sms):
     return str(COMMANDS.keys())
+
 
 def AddReservation(msid, sms_from, body_of_sms):
     """Add a +1 to this players table."""
@@ -151,6 +160,7 @@ def AddReservation(msid, sms_from, body_of_sms):
             " reserved seats at your table counting yourself.",
         ]
     )
+
 
 def RemoveReservation(msid, sms_from, body_of_sms):
     """Players can reserve extra seats at their table for special guests.
@@ -168,6 +178,7 @@ def RemoveReservation(msid, sms_from, body_of_sms):
         ]
     )
 
+
 def ReturnTableName(msid, sms_from, body_of_sms):
     """Table name is an index value. (e.g. Gamma, delta, epsilon...)"""
     logger.info("return player team table label function entered.")
@@ -175,12 +186,14 @@ def ReturnTableName(msid, sms_from, body_of_sms):
         ["Your table is ", players_database[sms_from][CURRENT_TABLE_ASSIGNMENT], "."]
     )
 
+
 def SetTeamName(msid, sms_from, body_of_sms):
     """Team name is the formal name. (e.g. 'Fools for the Trivia')
     When entered for one player applies for all at table.
     """
     logger.info("Set team name function entered.")
     return msid
+
 
 def list_players_in_database(tonight=False):
     tp_list = []
@@ -190,14 +203,16 @@ def list_players_in_database(tonight=False):
             # TODO this could be made more robust with a regex ('+1dddddddddd')
             dlta = how_long_ago_is(players_database[k][RECENTCALL])
             if tonight:  # Filter out records from past weeks if tonight equal True.
-                if dlta < 1:    
+                if dlta < 1:
                     tp_list.append(k)
             else:
                 tp_list.append(k)
     return tp_list
 
+
 def Tonights_players():
     return list_players_in_database(tonight=True)
+
 
 def ReturnStatus(msid, sms_from, body_of_sms):
     """Return various details of this player."""
@@ -225,20 +240,25 @@ def ReturnStatus(msid, sms_from, body_of_sms):
         )
     return stat
 
+
 def SuggestFunny(msid, sms_from, body_of_sms):
     """Return some ideas for team names."""
     logger.info("Funny team name suggestions entered.")
     return msid
+
 
 def SuggestSerious(msid, sms_from, body_of_sms):
     """Suggest only serious names."""
     logger.info("Serious team name suggestions entered.")
     return msid
 
+
 def ChangePlayerName(msid, sms_from, body_of_sms):
     """Allow player to correct their own name."""
     logger.info("Change players name function entered.")
+    
     return msid
+
 
 def ChangeTeamName(msid, sms_from, body_of_sms):
     """Allow player to change the name of their team.
@@ -249,10 +269,12 @@ def ChangeTeamName(msid, sms_from, body_of_sms):
     logger.info("Change team name function entered.")
     return msid
 
+
 def ReturnHelpInfo(msid, sms_from, body_of_sms):
     """Returns basic info about this app and the trivia competition."""
     logger.info("Help info function entered.")
     return HELPFUL_INFO
+
 
 def ShuffleTables(msid, sms_from, body_of_sms):
     """Primary function of this app is to match players to tables.
@@ -262,13 +284,14 @@ def ShuffleTables(msid, sms_from, body_of_sms):
     players to players that they have not played against before.
     """
     global least_meetups, TONIGHTS_PLAYERS, TABLE_ASSIGNED
+
     def extra_players(player_list):
         plus_ones = 0
         for player in player_list:  # Find all the extra players in this list.
             plus_ones += players_database[player][PLUS_ONES]
         logger.debug("".join([str(plus_ones), " Extra players"]))
         return plus_ones
-        
+
     def open_chairs(table):
         open_chrs = TABLESIZE - (len(table) + extra_players(table))
         logger.debug("".join([str(open_chrs), " Open chairs."]))
@@ -289,7 +312,7 @@ def ShuffleTables(msid, sms_from, body_of_sms):
         return tbl_dict
 
     # Begin ShuffleTables:
-    logger.info("Shuffle players function entered.")    
+    logger.info("Shuffle players function entered.")
     TABLE_NAMES = [
         "gamma",
         "epsilon",
@@ -301,7 +324,14 @@ def ShuffleTables(msid, sms_from, body_of_sms):
         "theta",
     ]
     TONIGHTS_PLAYERS = Tonights_players()
-    logger.debug("".join([str(TONIGHTS_PLAYERS)," Tonights players.",]))
+    logger.debug(
+        "".join(
+            [
+                str(TONIGHTS_PLAYERS),
+                " Tonights players.",
+            ]
+        )
+    )
     TOT_PLAYERS = len(TONIGHTS_PLAYERS) + extra_players(TONIGHTS_PLAYERS)
     logger.debug("".join([str(TOT_PLAYERS), " Total players."]))
     NUM_OF_TABLES = int(TOT_PLAYERS / TABLESIZE) + 1
@@ -314,16 +344,16 @@ def ShuffleTables(msid, sms_from, body_of_sms):
         proposed_tables = Assign_Tables(tables, TONIGHTS_PLAYERS)
         logger.info(pprint_dicts(proposed_tables))
         return proposed_tables
-    
+
     def Total_number_of_meetups(table_dict):
         """Return a total number of times any player has played against
         any other player at their table.
         """
         Total = 0
         # loop through tables
-            # loop through players at that table
-                # look at their history for players at their table tonight.
-                    # increment the total counter for each collision
+        # loop through players at that table
+        # look at their history for players at their table tonight.
+        # increment the total counter for each collision
         return Total
 
     NUMBER_OF_GUESSES = 9
@@ -341,6 +371,7 @@ def ShuffleTables(msid, sms_from, body_of_sms):
     logger.debug("".join(["Most unique tables are: ", pprint_dicts(least_meetups)]))
     return "Players have been assigned tables."
 
+
 def StartGame(msid, sms_from, body_of_sms):
     """Locks-in the table assignments and updates each player's database to record
     the event of these players being at the same table.
@@ -350,7 +381,12 @@ def StartGame(msid, sms_from, body_of_sms):
         # set players tablename
         players_database[player][CURRENT_TABLE_ASSIGNMENT] = TABLE_ASSIGNED[player]
         # Notify players by text of their table assignments.
-        Send_SMS("".join(["SpeedTrivia suggests you sit at table: ", TABLE_ASSIGNED[player]]), player)
+        Send_SMS(
+            "".join(
+                ["SpeedTrivia suggests you sit at table: ", TABLE_ASSIGNED[player]]
+            ),
+            player,
+        )
         time.sleep(2)
         # add other players from table to history list
         for teammate in least_meetups[TABLE_ASSIGNED[player]]:
@@ -358,6 +394,7 @@ def StartGame(msid, sms_from, body_of_sms):
         # TODO consider if this should be a database with teammates and dates.
         # for now it just a list with duplicates.
     return "Players have been notified."
+
 
 def ChangeTeamSize(msid, sms_from, body_of_sms):
     """Sets the maximum target size for tables.
@@ -380,15 +417,43 @@ def ChangeTeamSize(msid, sms_from, body_of_sms):
         return "Error. New table size not understood."
     return "".join(["New table size = ", str(TABLESIZE)])
 
+
 def Send_Announcement(msid, sms_from, body_of_sms):
-    """Send an SMS to ALL registered players.
-    """
+    """Send an SMS to ALL registered players."""
     # Remove the keyword 'Announcement' from the body_of_sms before sending.
     announcement = body_of_sms
     for player in list_players_in_database():
         #  Attach the disclaimer instructions on how to STOP texts
         Send_SMS(announcement, player)
     return
+
+
+def Send_players_list(msid, sms_from, body_of_sms):
+    """Send an SMS to CONTROLLER of ALL registered players."""
+    for player in list_players_in_database():
+        #  Attach the disclaimer instructions on how to STOP texts
+        Send_SMS(
+            "".join(
+                [
+                    players_database[player][CALLERNAME],
+                    " with ",
+                    str(players_database[player][PLUS_ONES]),
+                ]
+            ),
+            CONTROLLER,
+        )
+        logger.debug(
+            "".join(
+                [
+                    "Player: ",
+                    players_database[player][CALLERNAME],
+                    " has ",
+                    str(players_database[player][PLUS_ONES]),
+                    " extra seats.",
+                ]
+            )
+        )
+
 
 COMMANDS = {
     "Commands": ReturnCommandList,  # return this list of keys.
@@ -407,9 +472,11 @@ COMMANDS = {
     "Start": StartGame,  # CONTROLLER ONLY: Lock-in the table assignments for thid game night.
     "Size": ChangeTeamSize,  # CONTROLLER ONLY: Change the number of players per table.
     "Announcement": Send_Announcement,  # CONTROLLER ONLY: Make a SMS note to all registered players.
+    "Players-list": Send_players_list,  # CONTROLLER ONLY: Make a SMS note to all registered players.
 }
 CONTROLLER_ONLY_COMMANDS = [
-    "Announcement",  
+    "Announcement",
+    "Players-list",
     "Shuffle",
     "Start",
     "Size",
@@ -519,25 +586,17 @@ def update_caller_database(msid, sms_from, body_of_sms):
     messages_list = players_database[sms_from][MESSAGE_HISTORY]
     # truncate list at last 5 messages.
     players_database[sms_from][MESSAGE_HISTORY] = messages_list[-5:]
-    logger.info(
-        "".join(["Caller's Name: ", players_database[sms_from][CALLERNAME]])
-    )
+    logger.info("".join(["Caller's Name: ", players_database[sms_from][CALLERNAME]]))
     if players_database[sms_from][FIRSTCALL] == None:
         logger.info("First time caller.")
         Send_SMS("New Caller logged.", CONTROLLER)
-        players_database[sms_from][FIRSTCALL] = dt.datetime.now(
-            pytz.timezone("UTC")
-        )
+        players_database[sms_from][FIRSTCALL] = dt.datetime.now(pytz.timezone("UTC"))
         response = ask_caller_their_name()
-        players_database[sms_from][RECENTCALL] = dt.datetime.now(
-            pytz.timezone("UTC")
-        )
+        players_database[sms_from][RECENTCALL] = dt.datetime.now(pytz.timezone("UTC"))
     else:
         if players_database[sms_from][CALLERNAME] == "":
             response = check_sms_for_name(msid, sms_from, body_of_sms)
-        players_database[sms_from][RECENTCALL] = dt.datetime.now(
-            pytz.timezone("UTC")
-        )
+        players_database[sms_from][RECENTCALL] = dt.datetime.now(pytz.timezone("UTC"))
     return response
 
 
@@ -575,6 +634,7 @@ def check_sms_for_name(msid, sms_from, body_of_sms):
     return "".join(
         ["Thanks ", callername, "! Glad to meet you. Welcome to SpeedTrivia."]
     )
+
 
 if __name__ == "__main__":
     try:
