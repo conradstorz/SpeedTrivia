@@ -75,6 +75,12 @@ import random
 
 FILENAME = __file__
 FILENAME_PATHOBJ = Path(__file__)
+PROGRAM_START_TIME = dt.datetime.now(pytz.timezone("UTC"))
+def how_long_ago_is(past_time):
+    delta_ = dt.datetime.now(pytz.timezone("UTC")) - past_time
+    days_ = delta_ / dt.timedelta(days=1)
+    logger.debug("".join(["Time since ", str(days_)]))
+    return days_
 TWILLIO_SMS_NUMBER = "+18122038235"  # Paoli native number bought from Twilio
 DATABASE_PATHOBJ = Path("".join([FILENAME, ".db"]))
 TABLESIZE = 3
@@ -126,6 +132,17 @@ players_database["root"] = "root"
 def ReturnCommandList(msid, sms_from, body_of_sms):
     return str(COMMANDS.keys())
 
+def AddReservation(msid, sms_from, body_of_sms):
+    """Add a +1 to this players table."""
+    logger.info("Add a plue one function entered.")
+    players_database[sms_from][PLUSONE_KEY] += 1
+    return "".join(
+        [
+            "You now have ",
+            str(players_database[sms_from][PLUSONE_KEY] + 1),
+            " reserved seats at your table counting yourself.",
+        ]
+    )
 
 def RemoveReservation(msid, sms_from, body_of_sms):
     """Players can reserve extra seats at their table for special guests.
@@ -133,15 +150,15 @@ def RemoveReservation(msid, sms_from, body_of_sms):
     at the same table by design. (e.g. a non-player or spouse.)
     """
     logger.info("Remove a plus one from player function entered.")
-    players_database[sms_from][PLUSONE_KEY] -= 1
+    if players_database[sms_from][PLUSONE_KEY] > 0:
+        players_database[sms_from][PLUSONE_KEY] -= 1
     return "".join(
         [
             "You now have ",
-            str(players_database[sms_from][PLUSONE_KEY]),
-            " extra seats at your table.",
+            str(players_database[sms_from][PLUSONE_KEY] + 1),
+            " reserved seats at your table counting yourself.",
         ]
     )
-
 
 def ReturnTableName(msid, sms_from, body_of_sms):
     """Table name is an index value. (e.g. Gamma, delta, epsilon...)"""
@@ -150,7 +167,6 @@ def ReturnTableName(msid, sms_from, body_of_sms):
         ["Your table is ", players_database[sms_from][CURRENT_TABLE_ASSIGNMENT], "."]
     )
 
-
 def SetTeamName(msid, sms_from, body_of_sms):
     """Team name is the formal name. (e.g. 'Fools for the Trivia')
     When entered for one player applies for all at table.
@@ -158,16 +174,21 @@ def SetTeamName(msid, sms_from, body_of_sms):
     logger.info("Set team name function entered.")
     return msid
 
-
-def Tonights_players():
+def list_players_in_database(tonight=False):
     tp_list = []
-    # TODO filter out records from past weeks.
-    # Do not count players that have not been in touch for tonights game.
+    # Filter out records from past weeks if tonight equal False.
     for k in players_database.keys():
-        if len(k) == 12:
-            tp_list.append(k)
+        if len(k) == 12:  # ignore entries that are not phone numbers
+            dlta = how_long_ago_is(players_database[k][RECENTCALL_KEY])
+            if tonight:
+                if dlta < 1:    
+                    tp_list.append(k)
+            else:
+                tp_list.append(k)
     return tp_list
 
+def Tonights_players():
+    return list_players_in_database(tonight=True)
 
 def ReturnStatus(msid, sms_from, body_of_sms):
     """Return various details of this player."""
@@ -195,37 +216,20 @@ def ReturnStatus(msid, sms_from, body_of_sms):
         )
     return stat
 
-
-def AddReservation(msid, sms_from, body_of_sms):
-    """Add a +1 to this players table."""
-    logger.info("Add a plue one function entered.")
-    players_database[sms_from][PLUSONE_KEY] += 1
-    return "".join(
-        [
-            "You now have ",
-            str(players_database[sms_from][PLUSONE_KEY]),
-            " extra seats at your table.",
-        ]
-    )
-
-
 def SuggestFunny(msid, sms_from, body_of_sms):
     """Return some ideas for team names."""
     logger.info("Funny team name suggestions entered.")
     return msid
-
 
 def SuggestSerious(msid, sms_from, body_of_sms):
     """Suggest only serious names."""
     logger.info("Serious team name suggestions entered.")
     return msid
 
-
 def ChangePlayerName(msid, sms_from, body_of_sms):
     """Allow player to correct their own name."""
     logger.info("Change players name function entered.")
     return msid
-
 
 def ChangeTeamName(msid, sms_from, body_of_sms):
     """Allow player to change the name of their team.
@@ -236,12 +240,10 @@ def ChangeTeamName(msid, sms_from, body_of_sms):
     logger.info("Change team name function entered.")
     return msid
 
-
 def ReturnHelpInfo(msid, sms_from, body_of_sms):
     """Returns basic info about this app and the trivia competition."""
     logger.info("Help info function entered.")
     return msid
-
 
 def ShuffleTables(msid, sms_from, body_of_sms):
     """Primary function of this app is to match players to tables.
@@ -308,7 +310,6 @@ def ShuffleTables(msid, sms_from, body_of_sms):
     logger.info(pprint_dicts(proposed_tables))
     return "Players have been assigned tables."
 
-
 def StartGame(msid, sms_from, body_of_sms):
     """Locks-in the table assignments and updates each player's database to record
     the event of these players being at the same table.
@@ -322,7 +323,6 @@ def StartGame(msid, sms_from, body_of_sms):
             # add other players from table to history list
             # (increment times players have met)
     return msid
-
 
 def ChangeTeamSize(msid, sms_from, body_of_sms):
     """Sets the maximum target size for tables.
@@ -344,7 +344,6 @@ def ChangeTeamSize(msid, sms_from, body_of_sms):
     else:
         return "Error. New table size not understood."
     return "".join(["New table size = ", str(TABLESIZE)])
-
 
 COMMANDS = {
     "Commands": ReturnCommandList,  # return this list of keys.
@@ -527,7 +526,13 @@ def check_sms_for_name(msid, sms_from, body_of_sms):
         ["Thanks ", callername, "! Glad to meet you. Welcome to SpeedTrivia."]
     )
 
-
 if __name__ == "__main__":
-    logger.info("Program is being run as __main__")
-    SpeedTriviaApp.run(debug=True)
+    try:
+        logger.info("Program is being run as __main__")
+        SpeedTriviaApp.run(debug=True)
+        logger.info("Program ended nominally.")
+        sys.exit(0)
+    except Exception as e:
+        logger.info("Program terminated with exception:")
+        logger.info(str(e))
+        sys.exit(0)
