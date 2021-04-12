@@ -208,14 +208,15 @@ def ReturnStatus(msid, sms_from, body_of_sms):
             " your table name is ",
             players_database[sms_from][CURRENT_TABLE_ASSIGNMENT],
             " and you have ",
-            players_database[sms_from][CURRENT_TABLE_ASSIGNMENT],
+            str(players_database[sms_from][PLUS_ONES]),
             " extra seats reserved.",
         ]
     )
     if sms_from == CONTROLLER:
         stat = "".join(
             [
-                "status: ",
+                stat,
+                " --status: ",
                 str(TABLESIZE),
                 " per table. ",
                 str(len(Tonights_players())),
@@ -329,7 +330,7 @@ def ShuffleTables(msid, sms_from, body_of_sms):
     guesses = dict()
     for itr in range(NUMBER_OF_GUESSES):
         guesses[itr] = Proposed_assignments()
-        logger.debug("".join(["Guess ", str(itr), " is ", pprint_dicts]))
+        logger.debug("".join(["Guess ", str(itr), " is ", pprint_dicts(guesses[itr])]))
     least_meetups = dict()
     meets = 80000
     for guess in guesses:
@@ -448,6 +449,7 @@ if CLIENT == None:
 
 
 def Send_SMS(text, receipient):
+    logger.info("".join([text, ":-to-:", receipient]))
     return CLIENT.messages.create(body=text, from_=TWILLIO_SMS_NUMBER, to=receipient)
 
 
@@ -522,6 +524,7 @@ def update_caller_database(msid, sms_from, body_of_sms):
     )
     if players_database[sms_from][FIRSTCALL] == None:
         logger.info("First time caller.")
+        Send_SMS("New Caller logged.", CONTROLLER)
         players_database[sms_from][FIRSTCALL] = dt.datetime.now(
             pytz.timezone("UTC")
         )
@@ -564,6 +567,7 @@ def check_sms_for_name(msid, sms_from, body_of_sms):
     if callername != None:
         logger.info("Found a name:")
         logger.info(callername)
+        Send_SMS("".join(["New Caller is: ", callername]), CONTROLLER)
         players_database[sms_from][CALLERNAME] = callername
     else:
         logger.info("Couldn't find a name.")
@@ -575,7 +579,7 @@ def check_sms_for_name(msid, sms_from, body_of_sms):
 if __name__ == "__main__":
     try:
         logger.info("Program is being run as __main__")
-        SpeedTriviaApp.run(debug=True)
+        SpeedTriviaApp.run()
         logger.info("Program ended nominally.")
         sys.exit(0)
     except Exception as e:
