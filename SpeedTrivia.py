@@ -386,18 +386,24 @@ def ShuffleTables(msid, sms_from, body_of_sms):
         """Return a total number of times any player has played against
         any other player at their table.
         """
-        Total = 0
+        Total_collisions = 0
         # loop through tables
-        for table in least_meetups.keys():
+        logger.debug(pprint_dicts(table_dict))
+        for table in table_dict.keys():
+            table_collisions = 0
+            logger.debug(str(table))
             # loop through players at that table
-            for player in least_meetups[table]:
+            for player in table_dict[table]:
+                logger.debug(player)
                 # look at their history for players at their table tonight.
                 for prev in players_database[player][PARTNER_HISTORY]:
-                    if prev in least_meetups[table]:
-                        Total += 1
+                    if prev in table_dict[table]:
+                        table_collisions += 1
+                        Total_collisions += 1
                         # increment the total counter for each collision
-        logger.debug("".join(["Player collisions: ", str(Total)]))
-        return Total
+            logger.debug("".join(["Table collisions: ", str(table_collisions)]))
+        logger.debug("".join(["Player collisions: ", str(Total_collisions)]))
+        return Total_collisions
 
     NUMBER_OF_GUESSES = len(TONIGHTS_PLAYERS)
     guesses = dict()
@@ -430,12 +436,12 @@ def StartGame(msid, sms_from, body_of_sms):
         # set players tablename
         players_database[player][CURRENT_TABLE_ASSIGNMENT] = TABLE_ASSIGNED[player]
         # Notify players by text of their table assignments.
-        Send_SMS(
+        """Send_SMS(
             "".join(
                 ["SpeedTrivia suggests you sit at table: ", TABLE_ASSIGNED[player]]
             ),
             player,
-        )
+        )"""
         logger.info(
             "".join(["SpeedTrivia suggests you sit at table: ", TABLE_ASSIGNED[player]])
         )
@@ -592,6 +598,7 @@ if CLIENT == None:
 
 
 def Send_SMS(text, receipient):
+    # TODO place a block on SMS between 10pm and 8am
     logger.info("".join([text, ":-to-:", receipient]))
     return CLIENT.messages.create(body=text, from_=TWILLIO_SMS_NUMBER, to=receipient)
 
