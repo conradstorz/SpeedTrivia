@@ -118,6 +118,7 @@ DATABASE_PATHOBJ = Path("".join([FILENAME, ".db"]))
 TABLESIZE = 3
 CONTROLLER = "+18125577095"
 FROZEN = False
+tables = list()  # A global list of table labels that is defined within the 'ShuffleTables' function
 least_meetups = dict()  # A global that is defined within the 'ShuffleTables' function
 TABLE_ASSIGNED = dict()  # A global that is defined within the 'ShuffleTables' function
 # consisting of an entry for each player with the name of their table. (it has not been locked in during the shuffle process and gets locked in during the start function.)
@@ -268,6 +269,7 @@ def ReturnStatus(msid, sms_from, body_of_sms):
                 " per table. ",
                 str(len(Tonights_players())),
                 " players registered for tonight.",
+                str(tables),
             ]
         )
     return stat
@@ -320,7 +322,7 @@ def ShuffleTables(msid, sms_from, body_of_sms):
     Shuffle will try repeatedly to find a solution that exposes the maximum number of
     players to players that they have not played against before.
     """
-    global least_meetups, TONIGHTS_PLAYERS, TABLE_ASSIGNED
+    global least_meetups, TONIGHTS_PLAYERS, TABLE_ASSIGNED, tables
 
     def extra_players(player_list):
         plus_ones = 0
@@ -422,6 +424,8 @@ def ShuffleTables(msid, sms_from, body_of_sms):
     for table in least_meetups.keys():
         for player in least_meetups[table]:
             TABLE_ASSIGNED[player] = table
+    # final number of tables may be less than original estimation so re-establish
+    tables = least_meetups.keys()
     return "Players have been assigned tables."
 
 
@@ -554,7 +558,7 @@ COMMANDS = {
     "Start": StartGame,  # CONTROLLER ONLY: Lock-in the table assignments for thid game night.
     "Size": ChangeTeamSize,  # CONTROLLER ONLY: Change the number of players per table.
     "Announcement": Send_Announcement,  # CONTROLLER ONLY: Make a SMS note to all registered players.
-    "Players-list": Send_players_list,  # CONTROLLER ONLY: Make a SMS note to all registered players.
+    "Players-list": Send_players_list,  # CONTROLLER ONLY: Return a list of ALL players to CONTROLLER.
 }
 CONTROLLER_ONLY_COMMANDS = [
     "Announcement",
@@ -602,7 +606,7 @@ def Send_SMS(text, receipient):
     logger.info("".join([text, ":-to-:", receipient]))
     CLIENT.messages.create(body=text, from_=TWILLIO_SMS_NUMBER, to=receipient)
     return
-    
+
 
 def Respond_to(msid, sms_from, body_of_sms):
     response = update_caller_database(msid, sms_from, body_of_sms)
@@ -620,6 +624,7 @@ def Respond_to(msid, sms_from, body_of_sms):
                     response = "Sorry, That command is only available to the controller of this app."
             else:
                 response = COMMANDS[word](msid, sms_from, body_of_sms)
+            # TODO break loop here to stop after first command word found.
         else:
             logger.debug("".join(["Did not find ", word, " in ", str(body_of_sms)]))
     else:
@@ -682,6 +687,9 @@ def sms_reply():
     """Respond to incoming calls.
     This is the entrypoint for SpeedTrivia functionality.
     """
+    # log this number to track memory useage and monitor for memory leaks.
+    memory_footprint = sys.getallocatedblocks()
+    logger.debug("".join(["Running program footprint is: ", str(memory_footprint)]))
     logger.info("Message received:")
     sms_body = request.values.get("Body", None)
     sms_from = request.values.get("From", None)
