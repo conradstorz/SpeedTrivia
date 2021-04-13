@@ -604,7 +604,7 @@ def Send_SMS(text, receipient):
 
 def Respond_to(msid, sms_from, body_of_sms):
     response = update_caller_database(msid, sms_from, body_of_sms)
-    logger.info(pprint_dicts(players_database[sms_from]))
+    logger.debug(pprint_dicts(players_database[sms_from]))
     cmnds = COMMANDS.keys()
     logger.info(cmnds)
     for word in cmnds:
@@ -618,11 +618,8 @@ def Respond_to(msid, sms_from, body_of_sms):
                     response = "Sorry, That command is only available to the controller of this app."
             else:
                 response = COMMANDS[word](msid, sms_from, body_of_sms)
-            # TODO break loop here to stop after first command word found.
-        else:
-            logger.debug("".join(["Did not find ", word, " in ", str(body_of_sms)]))
-    else:
-        logger.info("No command words found in this SMS.")
+            # break loop here to stop after first command word found.
+            break
     return response
 
 
