@@ -118,7 +118,9 @@ DATABASE_PATHOBJ = Path("".join([FILENAME, ".db"]))
 TABLESIZE = 3
 CONTROLLER = "+18125577095"
 FROZEN = False
-tables = list()  # A global list of table labels that is defined within the 'ShuffleTables' function
+tables = (
+    list()
+)  # A global list of table labels that is defined within the 'ShuffleTables' function
 least_meetups = dict()  # A global that is defined within the 'ShuffleTables' function
 TABLE_ASSIGNED = dict()  # A global that is defined within the 'ShuffleTables' function
 # consisting of an entry for each player with the name of their table. (it has not been locked in during the shuffle process and gets locked in during the start function.)
@@ -176,7 +178,7 @@ def AddReservation(msid, sms_from, body_of_sms):
     items = body_of_sms.split()
     try:
         number = int(items[1])
-    except ValueError as e:
+    except (ValueError, IndexError) as e:
         number = 1
     players_database[sms_from][PLUS_ONES] += number
     return "".join(
@@ -197,7 +199,7 @@ def RemoveReservation(msid, sms_from, body_of_sms):
     items = body_of_sms.split()
     try:
         number = int(items[1])
-    except ValueError as e:
+    except (ValueError, IndexError) as e:
         number = 1
     if (players_database[sms_from][PLUS_ONES] - number) >= 0:
         players_database[sms_from][PLUS_ONES] -= number
@@ -514,29 +516,21 @@ def Send_Webform_help(msid, sms_from, body_of_sms):
 
 def Send_players_list(msid, sms_from, body_of_sms):
     """Send an SMS to CONTROLLER of ALL registered players."""
+    player_list = []
     for player in list_players_in_database():
-        #  Attach the disclaimer instructions on how to STOP texts
-        Send_SMS(
+        player_list.append(
             "".join(
                 [
                     players_database[player][CALLERNAME],
                     " with ",
                     str(players_database[player][PLUS_ONES]),
+                    " extras. ",
                 ]
             ),
-            CONTROLLER,
         )
-        logger.debug(
-            "".join(
-                [
-                    "Player: ",
-                    players_database[player][CALLERNAME],
-                    " has ",
-                    str(players_database[player][PLUS_ONES]),
-                    " extra seats.",
-                ]
-            )
-        )
+    message = "".join(player_list)
+    Send_SMS(message, CONTROLLER)
+    logger.debug(message)
 
 
 COMMANDS = {
