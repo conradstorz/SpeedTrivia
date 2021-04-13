@@ -600,8 +600,9 @@ if CLIENT == None:
 def Send_SMS(text, receipient):
     # TODO place a block on SMS between 10pm and 8am
     logger.info("".join([text, ":-to-:", receipient]))
-    return CLIENT.messages.create(body=text, from_=TWILLIO_SMS_NUMBER, to=receipient)
-
+    CLIENT.messages.create(body=text, from_=TWILLIO_SMS_NUMBER, to=receipient)
+    return
+    
 
 def Respond_to(msid, sms_from, body_of_sms):
     response = update_caller_database(msid, sms_from, body_of_sms)
@@ -669,7 +670,7 @@ def check_sms_for_name(msid, sms_from, body_of_sms):
     )
 
 
-print(Send_SMS("SpeedTrivia program start.", "+18125577095"))
+Send_SMS("SpeedTrivia program start.", "+18125577095")
 
 logger.info("Instantiating Flask App:")
 SpeedTriviaApp = Flask(__name__)
