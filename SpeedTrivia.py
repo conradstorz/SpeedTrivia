@@ -709,6 +709,7 @@ if __name__ == "__main__":
     try:
         logger.info("Program is being run as __main__")
         SpeedTriviaApp.run()
+        # Flask does not return here during exceptions or ctrl-c
         logger.info("Program ended nominally.")
         sys.exit(0)
     except Exception as e:
