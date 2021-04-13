@@ -59,10 +59,18 @@ seats as you need. Thanks for attending!
 """
 TIME_INFO = """Trivia at Mac's Hideaway is Tuesday nights 
 starting promptly at 7pm and runs 2 hours. """
+WEBFORM_HELP = (
+    """The website for entering your answers is: tinyurl.com/cemacshideaway"""
+)
+MOST_COMMON_HELP = """Common commands are add/remove plus ones. 
+"Minus 1" removes 1. 
+"Plus 2" adds 2 extra players.
+"Status" tells you how many plus ones you have."""
 # Download the twilio-python library from twilio.com/docs/libraries/python
 import os
 import sys
 import time
+from nltk.corpus.reader import propbank
 from twilio.rest import Client
 from flask import Flask, request, redirect
 from twilio.twiml.messaging_response import MessagingResponse
@@ -85,6 +93,19 @@ FILENAME_PATHOBJ = Path(__file__)
 PROGRAM_START_TIME = dt.datetime.now(pytz.timezone("UTC"))
 
 
+def ProperNounExtractor(text):
+    # if text is only a single word, like 'Doug', this routine does not identify it as a name.
+    sentences = nltk.sent_tokenize(text)
+    for sentence in sentences:
+        words = nltk.word_tokenize(sentence)
+        words = [word for word in words if word not in set(stopwords.words("english"))]
+        tagged = nltk.pos_tag(words)
+        for (word, tag) in tagged:
+            if tag == "NNP":  # If the word is a proper noun
+                return word
+    return None
+
+
 def how_long_ago_is(past_time):
     delta_ = dt.datetime.now(pytz.timezone("UTC")) - past_time
     days_ = delta_ / dt.timedelta(days=1)
@@ -99,9 +120,8 @@ CONTROLLER = "+18125577095"
 FROZEN = False
 least_meetups = dict()  # A global that is defined within the 'ShuffleTables' function
 TABLE_ASSIGNED = dict()  # A global that is defined within the 'ShuffleTables' function
-TONIGHTS_PLAYERS = (
-    list()
-)  # A global that is defined within the 'ShuffleTables' function
+# consisting of an entry for each player with the name of their table. (it has not been locked in during the shuffle process and gets locked in during the start function.)
+TONIGHTS_PLAYERS = list()  # A global defined within the 'ShuffleTables' function
 
 # Begin logging definition
 logger.remove()  # removes the default console logger provided by Loguru.
@@ -152,7 +172,12 @@ def ReturnCommandList(msid, sms_from, body_of_sms):
 def AddReservation(msid, sms_from, body_of_sms):
     """Add a +1 to this players table."""
     logger.info("Add a plue one function entered.")
-    players_database[sms_from][PLUS_ONES] += 1
+    items = body_of_sms.split()
+    try:
+        number = int(items[1])
+    except ValueError as e:
+        number = 1
+    players_database[sms_from][PLUS_ONES] += number
     return "".join(
         [
             "You now have ",
@@ -168,8 +193,15 @@ def RemoveReservation(msid, sms_from, body_of_sms):
     at the same table by design. (e.g. a non-player or spouse.)
     """
     logger.info("Remove a plus one from player function entered.")
-    if players_database[sms_from][PLUS_ONES] > 0:
-        players_database[sms_from][PLUS_ONES] -= 1
+    items = body_of_sms.split()
+    try:
+        number = int(items[1])
+    except ValueError as e:
+        number = 1
+    if (players_database[sms_from][PLUS_ONES] - number) >= 0:
+        players_database[sms_from][PLUS_ONES] -= number
+    else:
+        players_database[sms_from][PLUS_ONES] = 0
     return "".join(
         [
             "You now have ",
@@ -203,7 +235,7 @@ def list_players_in_database(tonight=False):
             # TODO this could be made more robust with a regex ('+1dddddddddd')
             dlta = how_long_ago_is(players_database[k][RECENTCALL])
             if tonight:  # Filter out records from past weeks if tonight equal True.
-                if dlta < 1:
+                if dlta < 6:
                     tp_list.append(k)
             else:
                 tp_list.append(k)
@@ -235,7 +267,7 @@ def ReturnStatus(msid, sms_from, body_of_sms):
                 str(TABLESIZE),
                 " per table. ",
                 str(len(Tonights_players())),
-                " players registered.",
+                " players registered for tonight.",
             ]
         )
     return stat
@@ -256,8 +288,13 @@ def SuggestSerious(msid, sms_from, body_of_sms):
 def ChangePlayerName(msid, sms_from, body_of_sms):
     """Allow player to correct their own name."""
     logger.info("Change players name function entered.")
-    
-    return msid
+    callername = ProperNounExtractor(body_of_sms)
+    if callername != None:
+        players_database[sms_from][CALLERNAME] = callername
+        reply = "".join(["Thanks ", callername, "! Your name has been updated."])
+    else:
+        reply = "Sorry, I did not understand."
+    return reply
 
 
 def ChangeTeamName(msid, sms_from, body_of_sms):
@@ -351,24 +388,34 @@ def ShuffleTables(msid, sms_from, body_of_sms):
         """
         Total = 0
         # loop through tables
-        # loop through players at that table
-        # look at their history for players at their table tonight.
-        # increment the total counter for each collision
+        for table in least_meetups.keys():
+            # loop through players at that table
+            for player in least_meetups[table]:
+                # look at their history for players at their table tonight.
+                for prev in players_database[player][PARTNER_HISTORY]:
+                    if prev in least_meetups[table]:
+                        Total += 1
+                        # increment the total counter for each collision
+        logger.debug("".join(["Player collisions: ", str(Total)]))
         return Total
 
-    NUMBER_OF_GUESSES = 9
+    NUMBER_OF_GUESSES = len(TONIGHTS_PLAYERS)
     guesses = dict()
     for itr in range(NUMBER_OF_GUESSES):
         guesses[itr] = Proposed_assignments()
         logger.debug("".join(["Guess ", str(itr), " is ", pprint_dicts(guesses[itr])]))
     least_meetups = dict()
     meets = 80000
-    for guess in guesses:
-        tnom = Total_number_of_meetups(guess)
+    for guess in guesses.keys():
+        logger.debug("".join(["Calculating past meetups for proposal: ", str(guess)]))
+        tnom = Total_number_of_meetups(guesses[guess])
         if meets > tnom:
             meets = tnom
-            least_meetups = guess
+            least_meetups = guesses[guess]
     logger.debug("".join(["Most unique tables are: ", pprint_dicts(least_meetups)]))
+    for table in least_meetups.keys():
+        for player in least_meetups[table]:
+            TABLE_ASSIGNED[player] = table
     return "Players have been assigned tables."
 
 
@@ -377,7 +424,9 @@ def StartGame(msid, sms_from, body_of_sms):
     the event of these players being at the same table.
     """
     logger.info("Start game night function entered.")
+    logger.debug(pprint_dicts(TABLE_ASSIGNED))
     for player in TONIGHTS_PLAYERS:
+        logger.debug(player)
         # set players tablename
         players_database[player][CURRENT_TABLE_ASSIGNMENT] = TABLE_ASSIGNED[player]
         # Notify players by text of their table assignments.
@@ -387,12 +436,19 @@ def StartGame(msid, sms_from, body_of_sms):
             ),
             player,
         )
+        logger.info(
+            "".join(["SpeedTrivia suggests you sit at table: ", TABLE_ASSIGNED[player]])
+        )
         time.sleep(2)
         # add other players from table to history list
         for teammate in least_meetups[TABLE_ASSIGNED[player]]:
-            players_database[player][PARTNER_HISTORY].append(teammate)
-        # TODO consider if this should be a database with teammates and dates.
-        # for now it just a list with duplicates.
+            if teammate == player:
+                pass
+            else:
+                logger.debug("".join(["Adding :", teammate, " to ", player]))
+                players_database[player][PARTNER_HISTORY].append(teammate)
+                # TODO consider if this should be a database with teammates and dates.
+                # for now it just a list with duplicates.
     return "Players have been notified."
 
 
@@ -428,6 +484,24 @@ def Send_Announcement(msid, sms_from, body_of_sms):
     return
 
 
+def Send_common_commands_help(msid, sms_from, body_of_sms):
+    logger.debug(
+        "".join(
+            ["User: ", players_database[sms_from][CALLERNAME], " asked for Form-Help."]
+        )
+    )
+    return MOST_COMMON_HELP
+
+
+def Send_Webform_help(msid, sms_from, body_of_sms):
+    logger.debug(
+        "".join(
+            ["User: ", players_database[sms_from][CALLERNAME], " asked for Form-Help."]
+        )
+    )
+    return WEBFORM_HELP
+
+
 def Send_players_list(msid, sms_from, body_of_sms):
     """Send an SMS to CONTROLLER of ALL registered players."""
     for player in list_players_in_database():
@@ -457,6 +531,8 @@ def Send_players_list(msid, sms_from, body_of_sms):
 
 COMMANDS = {
     "Commands": ReturnCommandList,  # return this list of keys.
+    "Webform": Send_Webform_help,  # provide a clickable link to the webform.
+    "Common": Send_common_commands_help,  # provide help using most common commands.
     "Minus": RemoveReservation,  # remove a +1 from the caller's table.
     "Table": ReturnTableName,  # return callers table name.
     "Team": SetTeamName,  # return Team name if exists or ask if None.
@@ -464,10 +540,10 @@ COMMANDS = {
     "Plus": AddReservation,  # add another +1 to the caller's table.
     "Funny": SuggestFunny,  # return a random "funny" team name from a list.
     "Serious": SuggestSerious,  # return a "serious" team name.
-    "ChangeName": ChangePlayerName,  # delete the player name and ask for a new one.
-    "ChangeTeam": ChangeTeamName,  # delete the team name and ask for a new one.
+    "Change-Name": ChangePlayerName,  # delete the player name and ask for a new one.
+    "Change-Team": ChangeTeamName,  # delete the team name and ask for a new one.
     "time": ReturnHelpInfo,  # return the HELP file with info on start time of game.
-    "Help": ReturnHelpInfo,  # return the HELP file with info on using the app.
+    "Helpme": ReturnHelpInfo,  # return the HELP file with info on using the app.
     "Shuffle": ShuffleTables,  # CONTROLLER ONLY: re-shuffle table assignments.
     "Start": StartGame,  # CONTROLLER ONLY: Lock-in the table assignments for thid game night.
     "Size": ChangeTeamSize,  # CONTROLLER ONLY: Change the number of players per table.
@@ -520,42 +596,6 @@ def Send_SMS(text, receipient):
     return CLIENT.messages.create(body=text, from_=TWILLIO_SMS_NUMBER, to=receipient)
 
 
-print(Send_SMS("SpeedTrivia program start.", "+18125577095"))
-
-logger.info("Instantiating Flask App:")
-SpeedTriviaApp = Flask(__name__)
-logger.info(SpeedTriviaApp)
-
-
-@SpeedTriviaApp.route("/sms", methods=["GET", "POST"])
-def sms_reply():
-    """Respond to incoming calls.
-    This is the entrypoint for SpeedTrivia functionality.
-    """
-    logger.info("Message received:")
-    sms_body = request.values.get("Body", None)
-    sms_from = request.values.get("From", None)
-    sms_MSID = request.values.get("MessageSid", None)
-    logger.info(sms_MSID)
-    logger.info(sms_from)
-    logger.info(sms_body)
-    # Start our TwiML response by creating a new response object.
-    sms_response = MessagingResponse()
-    logger.info(sms_response)
-    # Generate an appropriate response (if any)
-    reply = Respond_to(sms_MSID, sms_from, sms_body)
-    if reply == "":
-        logger.info("No response needed.")
-    else:
-        logger.info(reply)
-    sms_response.message(reply)
-    logger.info(str(sms_response))
-    logger.info("Updating database...")
-    pickle.dump(players_database, open(DATABASE_PATHOBJ, "wb"))
-    logger.info("Returning control to Flask.")
-    return str(sms_response)
-
-
 def Respond_to(msid, sms_from, body_of_sms):
     response = update_caller_database(msid, sms_from, body_of_sms)
     logger.info(pprint_dicts(players_database[sms_from]))
@@ -606,21 +646,7 @@ def ask_caller_their_name():
 
 
 def check_sms_for_name(msid, sms_from, body_of_sms):
-    # Function to extract the proper nouns from free form text.
-    def ProperNounExtractor(text):
-        # if text is only a single word, like 'Doug', this routine does not identify it as a name.
-        sentences = nltk.sent_tokenize(text)
-        for sentence in sentences:
-            words = nltk.word_tokenize(sentence)
-            words = [
-                word for word in words if word not in set(stopwords.words("english"))
-            ]
-            tagged = nltk.pos_tag(words)
-            for (word, tag) in tagged:
-                if tag == "NNP":  # If the word is a proper noun
-                    return word
-        return None
-
+    # Function to extract the proper names from free form text.
     logger.info("Searching the sms for the callers name.")
     callername = ProperNounExtractor(body_of_sms)
     if callername != None:
@@ -634,6 +660,42 @@ def check_sms_for_name(msid, sms_from, body_of_sms):
     return "".join(
         ["Thanks ", callername, "! Glad to meet you. Welcome to SpeedTrivia."]
     )
+
+
+print(Send_SMS("SpeedTrivia program start.", "+18125577095"))
+
+logger.info("Instantiating Flask App:")
+SpeedTriviaApp = Flask(__name__)
+logger.info(SpeedTriviaApp)
+
+
+@SpeedTriviaApp.route("/sms", methods=["GET", "POST"])
+def sms_reply():
+    """Respond to incoming calls.
+    This is the entrypoint for SpeedTrivia functionality.
+    """
+    logger.info("Message received:")
+    sms_body = request.values.get("Body", None)
+    sms_from = request.values.get("From", None)
+    sms_MSID = request.values.get("MessageSid", None)
+    logger.info(sms_MSID)
+    logger.info(sms_from)
+    logger.info(sms_body)
+    # Start our TwiML response by creating a new response object.
+    sms_response = MessagingResponse()
+    logger.info(sms_response)
+    # Generate an appropriate response (if any)
+    reply = Respond_to(sms_MSID, sms_from, sms_body)
+    if reply == "":
+        logger.info("No response needed.")
+    else:
+        logger.info(reply)
+    sms_response.message(reply)
+    logger.info(str(sms_response))
+    logger.info("Updating database...")
+    pickle.dump(players_database, open(DATABASE_PATHOBJ, "wb"))
+    logger.info("Returning control to Flask.")
+    return str(sms_response)
 
 
 if __name__ == "__main__":
