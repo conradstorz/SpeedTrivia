@@ -70,14 +70,16 @@ MOST_COMMON_HELP = """Common commands are add/remove plus ones.
 import sys
 import time
 from collections import defaultdict
-
-from flask import Flask, request, redirect
-
-from loguru import logger
-from pprint import pformat as pprint_dicts
-import datetime as dt
-from pathlib import Path
+import pickle
 import pytz
+import datetime as dt
+from flask import Flask, request, redirect
+from pprint import pformat as pprint_dicts
+from loguru import logger
+
+
+from pathlib import Path
+
 import random
 
 # import our private repo of functions and constants
@@ -87,14 +89,6 @@ import ST_twilio as tw
 FILENAME = __file__
 FILENAME_PATHOBJ = Path(__file__)
 PROGRAM_START_TIME = dt.datetime.now(pytz.timezone("UTC"))
-
-
-
-def how_long_ago_is(past_time):
-    delta_ = dt.datetime.now(pytz.timezone("UTC")) - past_time
-    days_ = delta_ / dt.timedelta(days=1)
-    logger.debug("".join(["Time since ", str(days_)]))
-    return days_
 
 
 # Begin logging definition
@@ -111,148 +105,17 @@ logger.add(
 logger.info("Program started.")
 
 
+# some of the basic commands. The others are in ST_common.py
 def ReturnCommandList(msid, sms_from, body_of_sms):
     return str(COMMANDS.keys())
 
+def Send_common_commands_help(msid, sms_from, body_of_sms):
+    logger.debug("".join(["User: ", stc.players_database[sms_from][stc.CALLERNAME], " asked for Form-Help."]))
+    return MOST_COMMON_HELP
 
-def AddReservation(msid, sms_from, body_of_sms):
-    """Add a +1 to this players table."""
-    logger.info("Add a plue one function entered.")
-    items = body_of_sms.split()
-    try:
-        number = int(items[1])
-    except ValueError as e:
-        number = 1
-    stc.players_database[sms_from][stc.PLUS_ONES] += number
-    return "".join(
-        [
-            "You now have ",
-            str(stc.players_database[sms_from][stc.PLUS_ONES] + 1),
-            " reserved seats at your table counting yourself.",
-        ]
-    )
-
-
-def RemoveReservation(msid, sms_from, body_of_sms):
-    """Players can reserve extra seats at their table for special guests.
-    Those guests don't register with this app on their own they just sit
-    at the same table by design. (e.g. a non-player or spouse.)
-    """
-    logger.info("Remove a plus one from player function entered.")
-    items = body_of_sms.split()
-    try:
-        number = int(items[1])
-    except ValueError as e:
-        number = 1
-    if (stc.players_database[sms_from][stc.PLUS_ONES] - number) >= 0:
-        stc.players_database[sms_from][stc.PLUS_ONES] -= number
-    else:
-        stc.players_database[sms_from][stc.PLUS_ONES] = 0
-    return "".join(
-        [
-            "You now have ",
-            str(stc.players_database[sms_from][stc.PLUS_ONES] + 1),
-            " reserved seats at your table counting yourself.",
-        ]
-    )
-
-
-def ReturnTableName(msid, sms_from, body_of_sms):
-    """Table name is an index value. (e.g. Gamma, delta, epsilon...)"""
-    logger.info("return player team table label function entered.")
-    return "".join(
-        ["Your table is ", stc.players_database[sms_from][stc.CURRENT_TABLE_ASSIGNMENT], "."]
-    )
-
-
-def SetTeamName(msid, sms_from, body_of_sms):
-    """Team name is the formal name. (e.g. 'Fools for the Trivia')
-    When entered for one player applies for all at table.
-    """
-    logger.info("Set team name function entered.")
-    return msid
-
-
-def list_players_in_database(tonight=False):
-    tp_list = []
-    for k in stc.players_database.keys():
-        if len(k) == 12:  # ignore entries that are not phone numbers
-            # Entries that are not phone numbers are system variables for internal use.
-            # TODO this could be made more robust with a regex ('+1dddddddddd')
-            dlta = how_long_ago_is(stc.players_database[k][stc.RECENTCALL])
-            if tonight:  # Filter out records from past weeks if tonight equal True.
-                if dlta < 6:
-                    tp_list.append(k)
-            else:
-                tp_list.append(k)
-    return tp_list
-
-
-def Tonights_players():
-    return list_players_in_database(tonight=True)
-
-
-def ReturnStatus(msid, sms_from, body_of_sms):
-    """Return various details of this player."""
-    logger.info("Send status to player function entered.")
-    stat = "".join(
-        [
-            stc.players_database[sms_from][stc.CALLERNAME],
-            " your table name is ",
-            stc.players_database[sms_from][stc.CURRENT_TABLE_ASSIGNMENT],
-            " and you have ",
-            str(stc.players_database[sms_from][stc.PLUS_ONES]),
-            " extra seats reserved.",
-        ]
-    )
-    if sms_from == stc.CONTROLLER:
-        stat = "".join(
-            [
-                stat,
-                " --status: ",
-                str(stc.TABLESIZE),
-                " per table. ",
-                str(len(Tonights_players())),
-                " players registered for tonight.",
-                str(tables),
-            ]
-        )
-    return stat
-
-
-def SuggestFunny(msid, sms_from, body_of_sms):
-    """Return some ideas for team names."""
-    logger.info("Funny team name suggestions entered.")
-    return msid
-
-
-def SuggestSerious(msid, sms_from, body_of_sms):
-    """Suggest only serious names."""
-    logger.info("Serious team name suggestions entered.")
-    return msid
-
-
-def ChangePlayerName(msid, sms_from, body_of_sms):
-    """Allow player to correct their own name."""
-    logger.info("Change players name function entered.")
-    callername = stc.ProperNounExtractor(body_of_sms)
-    if callername != None:
-        stc.players_database[sms_from][stc.CALLERNAME] = callername
-        reply = "".join(["Thanks ", callername, "! Your name has been updated."])
-    else:
-        reply = "Sorry, I did not understand."
-    return reply
-
-
-def ChangeTeamName(msid, sms_from, body_of_sms):
-    """Allow player to change the name of their team.
-    This will work best after the night has been started
-    and the table assignments have been set. This functionality
-    is only useful for automated game answers processing.
-    """
-    logger.info("Change team name function entered.")
-    return msid
-
+def Send_Webform_help(msid, sms_from, body_of_sms):
+    logger.debug("".join(["User: ", stc.players_database[sms_from][stc.CALLERNAME], " asked for Form-Help."]))
+    return WEBFORM_HELP
 
 def ReturnHelpInfo(msid, sms_from, body_of_sms):
     """Returns basic info about this app and the trivia competition."""
@@ -260,250 +123,27 @@ def ReturnHelpInfo(msid, sms_from, body_of_sms):
     return HELPFUL_INFO
 
 
-def ShuffleTables(msid, sms_from, body_of_sms):
-    """Primary function of this app is to match players to tables.
-    This function 'randomly' assigns players to tables taking into account
-    the max table size, the plus ones,  and players that have previously played together.
-    Shuffle will try repeatedly to find a solution that exposes the maximum number of
-    players to players that they have not played against before.
-    """
-    global least_meetups, TONIGHTS_PLAYERS, TABLE_ASSIGNED, tables
-
-    def extra_players(player_list):
-        plus_ones = 0
-        for player in player_list:  # Find all the extra players in this list.
-            plus_ones += stc.players_database[player][stc.PLUS_ONES]
-        logger.debug("".join([str(plus_ones), " Extra players"]))
-        return plus_ones
-
-    def open_chairs(table):
-        open_chrs = stc.TABLESIZE - (len(table) + extra_players(table))
-        logger.debug("".join([str(open_chrs), " Open chairs."]))
-        if open_chrs < 1:
-            return 0
-        return open_chrs
-
-    def Assign_Tables(tables, players):
-        tbl_dict = defaultdict(list)
-        for player in players:
-            while player != None:
-                rnd_table = random.choice(tables)
-                logger.debug("".join([str(rnd_table), " random table."]))
-                if open_chairs(tbl_dict[rnd_table]) > 0:
-                    tbl_dict[rnd_table].append(player)
-                    logger.debug("".join([player, " assigned to table."]))
-                    player = None
-        return tbl_dict
-
-    # Begin ShuffleTables:
-    logger.info("Shuffle players function entered.")
-    TABLE_NAMES = [
-        "gamma",
-        "epsilon",
-        "delta",
-        "alpha",
-        "kappa",
-        "sigma",
-        "beta",
-        "theta",
-    ]
-    TONIGHTS_PLAYERS = Tonights_players()
-    logger.debug(
-        "".join(
-            [
-                str(TONIGHTS_PLAYERS),
-                " Tonights players.",
-            ]
-        )
-    )
-    TOT_PLAYERS = len(TONIGHTS_PLAYERS) + extra_players(TONIGHTS_PLAYERS)
-    logger.debug("".join([str(TOT_PLAYERS), " Total players."]))
-    NUM_OF_TABLES = int(TOT_PLAYERS / stc.TABLESIZE) + 1
-    if NUM_OF_TABLES < 1:
-        NUM_OF_TABLES = 1
-    tables = TABLE_NAMES[:NUM_OF_TABLES]
-    logger.debug("".join([str(tables), " Tonights tables."]))
-
-    def Proposed_assignments():
-        proposed_tables = Assign_Tables(tables, TONIGHTS_PLAYERS)
-        logger.info(pprint_dicts(proposed_tables))
-        return proposed_tables
-
-    def Total_number_of_meetups(table_dict):
-        """Return a total number of times any player has played against
-        any other player at their table.
-        """
-        Total_collisions = 0
-        # loop through tables
-        logger.debug(pprint_dicts(table_dict))
-        for table in table_dict.keys():
-            table_collisions = 0
-            logger.debug(str(table))
-            # loop through players at that table
-            for player in table_dict[table]:
-                logger.debug(player)
-                # look at their history for players at their table tonight.
-                for prev in stc.players_database[player][stc.PARTNER_HISTORY]:
-                    if prev in table_dict[table]:
-                        table_collisions += 1
-                        Total_collisions += 1
-                        # increment the total counter for each collision
-            logger.debug("".join(["Table collisions: ", str(table_collisions)]))
-        logger.debug("".join(["Player collisions: ", str(Total_collisions)]))
-        return Total_collisions
-
-    NUMBER_OF_GUESSES = len(TONIGHTS_PLAYERS)
-    guesses = dict()
-    for itr in range(NUMBER_OF_GUESSES):
-        guesses[itr] = Proposed_assignments()
-        logger.debug("".join(["Guess ", str(itr), " is ", pprint_dicts(guesses[itr])]))
-    least_meetups = dict()
-    meets = 80000
-    for guess in guesses.keys():
-        logger.debug("".join(["Calculating past meetups for proposal: ", str(guess)]))
-        tnom = Total_number_of_meetups(guesses[guess])
-        if meets > tnom:
-            meets = tnom
-            least_meetups = guesses[guess]
-    logger.debug("".join(["Most unique tables are: ", pprint_dicts(least_meetups)]))
-    for table in least_meetups.keys():
-        for player in least_meetups[table]:
-            stc.TABLE_ASSIGNED[player] = table
-    # final number of tables may be less than original estimation so re-establish
-    tables = least_meetups.keys()
-    return "Players have been assigned tables."
-
-
-def StartGame(msid, sms_from, body_of_sms):
-    """Locks-in the table assignments and updates each player's database to record
-    the event of these players being at the same table.
-    """
-    logger.info("Start game night function entered.")
-    logger.debug(pprint_dicts(stc.TABLE_ASSIGNED))
-    for player in TONIGHTS_PLAYERS:
-        logger.debug(player)
-        # set players tablename
-        stc.players_database[player][stc.CURRENT_TABLE_ASSIGNMENT] = stc.TABLE_ASSIGNED[player]
-        # Notify players by text of their table assignments.
-        """Send_SMS(
-            "".join(
-                ["SpeedTrivia suggests you sit at table: ", stc.TABLE_ASSIGNED[player]]
-            ),
-            player,
-        )"""
-        logger.info(
-            "".join(["SpeedTrivia suggests you sit at table: ", stc.TABLE_ASSIGNED[player]])
-        )
-        time.sleep(2)
-        # add other players from table to history list
-        for teammate in least_meetups[stc.TABLE_ASSIGNED[player]]:
-            if teammate == player:
-                pass
-            else:
-                logger.debug("".join(["Adding :", teammate, " to ", player]))
-                stc.players_database[player][stc.PARTNER_HISTORY].append(teammate)
-                # TODO consider if this should be a database with teammates and dates.
-                # for now it just a list with duplicates.
-    return "Players have been notified."
-
-
-def ChangeTeamSize(msid, sms_from, body_of_sms):
-    """Sets the maximum target size for tables.
-    Due to players having +1's some tables could go over this limit.
-    Generaly that will only happen if a team wants to have more +1's than
-    the normal table size.
-    """
-    global TABLESIZE  # needed because I want to change the global value
-    logger.info("Change team size function entered.")
-    parts = str(body_of_sms).split()
-    number = 0
-    for part in parts:
-        try:
-            number = int(part)
-        except:
-            pass
-    if number > 0:
-        stc.TABLESIZE = number
-    else:
-        return "Error. New table size not understood."
-    return "".join(["New table size = ", str(stc.TABLESIZE)])
-
-
-def Send_Announcement(msid, sms_from, body_of_sms):
-    """Send an SMS to ALL registered players."""
-    # Remove the keyword 'Announcement' from the body_of_sms before sending.
-    announcement = body_of_sms
-    for player in list_players_in_database():
-        #  Attach the disclaimer instructions on how to STOP texts
-        tw.Send_SMS(announcement, player)
-    return
-
-
-def Send_common_commands_help(msid, sms_from, body_of_sms):
-    logger.debug(
-        "".join(
-            ["User: ", stc.players_database[sms_from][stc.CALLERNAME], " asked for Form-Help."]
-        )
-    )
-    return MOST_COMMON_HELP
-
-
-def Send_Webform_help(msid, sms_from, body_of_sms):
-    logger.debug(
-        "".join(
-            ["User: ", stc.players_database[sms_from][stc.CALLERNAME], " asked for Form-Help."]
-        )
-    )
-    return WEBFORM_HELP
-
-
-def Send_players_list(msid, sms_from, body_of_sms):
-    """Send an SMS to CONTROLLER of ALL registered players."""
-    for player in list_players_in_database():
-        #  Attach the disclaimer instructions on how to STOP texts
-        tw.Send_SMS(
-            "".join(
-                [
-                    stc.players_database[player][stc.CALLERNAME],
-                    " with ",
-                    str(stc.players_database[player][stc.PLUS_ONES]),
-                ]
-            ),
-            stc.CONTROLLER,
-        )
-        logger.debug(
-            "".join(
-                [
-                    "Player: ",
-                    stc.players_database[player][stc.CALLERNAME],
-                    " has ",
-                    str(stc.players_database[player][stc.PLUS_ONES]),
-                    " extra seats.",
-                ]
-            )
-        )
-
 
 COMMANDS = {
     "Commands": ReturnCommandList,  # return this list of keys.
     "Webform": Send_Webform_help,  # provide a clickable link to the webform.
     "Common": Send_common_commands_help,  # provide help using most common commands.
-    "Minus": RemoveReservation,  # remove a +1 from the caller's table.
-    "Table": ReturnTableName,  # return callers table name.
-    "Team": SetTeamName,  # return Team name if exists or ask if None.
-    "Status": ReturnStatus,  # return caller status info.
-    "Plus": AddReservation,  # add another +1 to the caller's table.
-    "Funny": SuggestFunny,  # return a random "funny" team name from a list.
-    "Serious": SuggestSerious,  # return a "serious" team name.
-    "Change-Name": ChangePlayerName,  # delete the player name and ask for a new one.
-    "Change-Team": ChangeTeamName,  # delete the team name and ask for a new one.
     "time": ReturnHelpInfo,  # return the HELP file with info on start time of game.
-    "Helpme": ReturnHelpInfo,  # return the HELP file with info on using the app.
-    "Shuffle": ShuffleTables,  # CONTROLLER ONLY: re-shuffle table assignments.
-    "Start": StartGame,  # CONTROLLER ONLY: Lock-in the table assignments for thid game night.
-    "Size": ChangeTeamSize,  # CONTROLLER ONLY: Change the number of players per table.
-    "Announcement": Send_Announcement,  # CONTROLLER ONLY: Make a SMS note to all registered players.
-    "Players-list": Send_players_list,  # CONTROLLER ONLY: Return a list of ALL players to CONTROLLER.
+    "Helpme": ReturnHelpInfo,  # return the HELP file with info on using the app.    
+    "Minus": stc.RemoveReservation,  # remove a +1 from the caller's table.
+    "Table": stc.ReturnTableName,  # return callers table name.
+    "Team": stc.SetTeamName,  # return Team name if exists or ask if None.
+    "Status": stc.ReturnStatus,  # return caller status info.
+    "Plus": stc.AddReservation,  # add another +1 to the caller's table.
+    "Funny": stc.SuggestFunny,  # return a random "funny" team name from a list.
+    "Serious": stc.SuggestSerious,  # return a "serious" team name.
+    "Change-Name": stc.ChangePlayerName,  # delete the player name and ask for a new one.
+    "Change-Team": stc.ChangeTeamName,  # delete the team name and ask for a new one.
+    "Shuffle": stc.ShuffleTables,  # CONTROLLER ONLY: re-shuffle table assignments.
+    "Start": stc.StartGame,  # CONTROLLER ONLY: Lock-in the table assignments for thid game night.
+    "Size": stc.ChangeTeamSize,  # CONTROLLER ONLY: Change the number of players per table.
+    "Announcement": stc.Send_Announcement,  # CONTROLLER ONLY: Make a SMS note to all registered players.
+    "Players-list": stc.Send_players_list,  # CONTROLLER ONLY: Return a list of ALL players to CONTROLLER.
 }
 CONTROLLER_ONLY_COMMANDS = [
     "Announcement",
@@ -514,17 +154,51 @@ CONTROLLER_ONLY_COMMANDS = [
 ]
 
 # Save a dictionary into a pickle file.
-import pickle
-
-# pickle.dump( players_database, open( DATABASE_PATHOBJ, "wb" ) )
-# retrieve database:
-# players_database = pickle.load( open( DATABASE_PATHOBJ, "rb" ) )
 if stc.DATABASE_PATHOBJ.exists():
     logger.info("Recovering pickle database...")
     stc.players_database = pickle.load(open(stc.DATABASE_PATHOBJ, "rb"))
 else:
     logger.info("Creating new pickle database...")
     pickle.dump(stc.players_database, open(stc.DATABASE_PATHOBJ, "wb"))
+
+
+tw.Send_SMS("SpeedTrivia program start.", stc.CONTROLLER)
+
+logger.info("Instantiating Flask App:")
+SpeedTriviaApp = Flask(__name__)
+logger.info(SpeedTriviaApp)
+
+@SpeedTriviaApp.route("/sms", methods=["GET", "POST"])
+def sms_reply():
+    """Respond to incoming calls.
+    This is the entrypoint for SpeedTrivia functionality.
+    """
+    # log this number to track memory useage and monitor for memory leaks.
+    memory_footprint = sys.getallocatedblocks()
+    logger.debug("".join(["Running program footprint is: ", str(memory_footprint)]))
+    logger.info("Message received:")
+    sms_body = request.values.get("Body", None)
+    sms_from = request.values.get("From", None)
+    sms_MSID = request.values.get("MessageSid", None)
+    logger.info(sms_MSID)
+    logger.info(sms_from)
+    logger.info(sms_body)
+    # Start our TwiML response by creating a new response object.
+    sms_response = tw.MessagingResponse()
+    logger.info(sms_response)
+    # Generate an appropriate response (if any)
+    reply = Respond_to(sms_MSID, sms_from, sms_body)
+    if reply == "":
+        logger.info("No response needed.")
+    else:
+        logger.info(reply)
+    sms_response.message(reply)
+    logger.info(str(sms_response))
+    logger.info("Updating database...")
+    pickle.dump(stc.players_database, open(stc.DATABASE_PATHOBJ, "wb"))
+    logger.info("Returning control to Flask.")
+    return str(sms_response)
+
 
 
 
@@ -564,55 +238,13 @@ def update_caller_database(msid, sms_from, body_of_sms):
         logger.info("First time caller.")
         tw.Send_SMS("New Caller logged.", stc.CONTROLLER)
         stc.players_database[sms_from][stc.FIRSTCALL] = dt.datetime.now(pytz.timezone("UTC"))
-        response = ask_caller_their_name()
+        response = stc.ask_caller_their_name()
         stc.players_database[sms_from][stc.RECENTCALL] = dt.datetime.now(pytz.timezone("UTC"))
     else:
         if stc.players_database[sms_from][stc.CALLERNAME] == "":
-            response = check_sms_for_name(msid, sms_from, body_of_sms)
+            response = stc.check_sms_for_name(msid, sms_from, body_of_sms)
         stc.players_database[sms_from][stc.RECENTCALL] = dt.datetime.now(pytz.timezone("UTC"))
     return response
-
-from ST_common import ask_caller_their_name
-
-from ST_common import check_sms_for_name
-
-tw.Send_SMS("SpeedTrivia program start.", "+18125577095")
-
-logger.info("Instantiating Flask App:")
-SpeedTriviaApp = Flask(__name__)
-logger.info(SpeedTriviaApp)
-
-
-@SpeedTriviaApp.route("/sms", methods=["GET", "POST"])
-def sms_reply():
-    """Respond to incoming calls.
-    This is the entrypoint for SpeedTrivia functionality.
-    """
-    # log this number to track memory useage and monitor for memory leaks.
-    memory_footprint = sys.getallocatedblocks()
-    logger.debug("".join(["Running program footprint is: ", str(memory_footprint)]))
-    logger.info("Message received:")
-    sms_body = request.values.get("Body", None)
-    sms_from = request.values.get("From", None)
-    sms_MSID = request.values.get("MessageSid", None)
-    logger.info(sms_MSID)
-    logger.info(sms_from)
-    logger.info(sms_body)
-    # Start our TwiML response by creating a new response object.
-    sms_response = tw.MessagingResponse()
-    logger.info(sms_response)
-    # Generate an appropriate response (if any)
-    reply = Respond_to(sms_MSID, sms_from, sms_body)
-    if reply == "":
-        logger.info("No response needed.")
-    else:
-        logger.info(reply)
-    sms_response.message(reply)
-    logger.info(str(sms_response))
-    logger.info("Updating database...")
-    pickle.dump(stc.players_database, open(stc.DATABASE_PATHOBJ, "wb"))
-    logger.info("Returning control to Flask.")
-    return str(sms_response)
 
 
 if __name__ == "__main__":
