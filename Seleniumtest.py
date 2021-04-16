@@ -64,7 +64,7 @@ sample_answers = {
         'Answer': 'second round answer',
     },
     'final': {
-        'Round0': 'Final',
+        'Round': 'Final',
         'Answer': [
             'alpha', 
             'beta', 
@@ -74,6 +74,7 @@ sample_answers = {
         'Points': '20',        
     },
     'tiebreaker': {
+        'Round': 'Tiebreaker',
         'Answer': 'The final decision (no points)'
     }
 }
@@ -100,7 +101,7 @@ halftime_field_ids = {
 final_field_ids = {
     'Round': GameRoundBoxID,
     'Answer': HalftimeAndFinalAnswerBoxIDs,
-    'Points': FinalQuestionWagerID,
+    'Points': FinalQuestionWagerID,  # TODO edge case. this field is an input box. the other rounds this is a dropdown.
 }
 
 tiebreaker_field_ids = {
@@ -112,13 +113,13 @@ tiebreaker_field_ids = {
 def main():
 
     def Fill_a_field(value, field_id):
-        sleep(1)
+        sleep(.1)
         team = web.find_element_by_id(field_id)
         team.send_keys(value)
         return
 
     def Fill_a_dropdown(value, field_id):
-        sleep(1)
+        sleep(.1)
         roundbox = Select(web.find_element_by_id(field_id))
         roundbox.select_by_value(value)
         return
@@ -144,9 +145,9 @@ def main():
             for k1, v1 in v.items():
                 if k1 == 'Question': 
                     pass  # there is no question number field here
-                if k1 == 'Points':
+                elif k1 == 'Points':
                     pass  # truly do nothing there is no point wager.
-                if k1 == 'answer':
+                elif k1 == 'Answer':
                     pass  # must handle 4 answer boxes
                 else:
                     Fill_field[k1](v1, halftime_field_ids[k1])            
@@ -154,16 +155,20 @@ def main():
             for k1, v1 in v.items():
                 if k1 == 'Question': 
                     pass  # there is no question number field here                
-                if k1 == 'answer':
+                elif k1 == 'Answer':
                     pass  # must handle 4 answer boxes
-                Fill_field[k1](v1, final_field_ids[k1])   
+                elif k1 == 'Points':  # EDGE-CASE. This round uses input not dropdown.
+                    Fill_a_field(v1, final_field_ids[k1])
+                else:
+                    Fill_field[k1](v1, final_field_ids[k1])   
         if k == 'tiebreaker':
             for k1, v1 in v.items():
                 if k1 == 'Question': 
                     pass  # there is no question number field here
-                if k1 == 'Points':
+                elif k1 == 'Points':
                     pass  # truly do nothing there is no point wager.
-                Fill_field[k1](v1, tiebreaker_field_ids[k1])  
+                else:
+                    Fill_field[k1](v1, tiebreaker_field_ids[k1])  
         
         sleep(5)
         web.close()
