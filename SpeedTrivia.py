@@ -150,7 +150,7 @@ MESSAGE_HISTORY = "Message_history"
 CURRENT_TABLE_ASSIGNMENT = "Current_Table"
 CURRENT_TEAM_NAME = "Current_team"
 
-
+@logger.catch
 def dict_default():
     sample_player_dict = {
         CALLERNAME: "",
@@ -168,11 +168,11 @@ def dict_default():
 players_database = defaultdict(dict_default)
 players_database["root"] = "root"
 
-
+@logger.catch
 def ReturnCommandList(msid, sms_from, body_of_sms):
     return str(COMMANDS.keys())
 
-
+@logger.catch
 def AddReservation(msid, sms_from, body_of_sms):
     """Add a +1 to this players table."""
     logger.info("Add a plue one function entered.")
@@ -190,7 +190,7 @@ def AddReservation(msid, sms_from, body_of_sms):
         ]
     )
 
-
+@logger.catch
 def RemoveReservation(msid, sms_from, body_of_sms):
     """Players can reserve extra seats at their table for special guests.
     Those guests don't register with this app on their own they just sit
@@ -214,7 +214,7 @@ def RemoveReservation(msid, sms_from, body_of_sms):
         ]
     )
 
-
+@logger.catch
 def ReturnTableName(msid, sms_from, body_of_sms):
     """Table name is an index value. (e.g. Gamma, delta, epsilon...)"""
     logger.info("return player team table label function entered.")
@@ -222,19 +222,22 @@ def ReturnTableName(msid, sms_from, body_of_sms):
         ["Your table is ", players_database[sms_from][CURRENT_TABLE_ASSIGNMENT], "."]
     )
 
-
+@logger.catch
 def SetTeamName(msid, sms_from, body_of_sms):
     """Team name is the formal name. (e.g. 'Fools for the Trivia')
     When entered for one player applies for all at table.
     """
     logger.info("Set team name function entered.")
-    return msid
+    # TODO remove commandword from string body_of_sms
+    teamname = body_of_sms[11:]
+    players_database[sms_from][CURRENT_TEAM_NAME] = teamname
+    return f'Your new team name is: {teamname}'
 
-
+@logger.catch
 def list_players_in_database(tonight=False):
     tp_list = []
     for k in players_database.keys():
-        if len(k) == 12:  # ignore entries that are not phone numbers
+        if (len(k) == 12) and (k[0] == '+'):  # ignore entries that are not phone numbers
             # Entries that are not phone numbers are system variables for internal use.
             # TODO this could be made more robust with a regex ('+1dddddddddd')
             dlta = how_long_ago_is(players_database[k][RECENTCALL])
@@ -245,11 +248,11 @@ def list_players_in_database(tonight=False):
                 tp_list.append(k)
     return tp_list
 
-
+@logger.catch
 def Tonights_players():
     return list_players_in_database(tonight=True)
 
-
+@logger.catch
 def ReturnStatus(msid, sms_from, body_of_sms):
     """Return various details of this player."""
     logger.info("Send status to player function entered.")
@@ -277,19 +280,19 @@ def ReturnStatus(msid, sms_from, body_of_sms):
         )
     return stat
 
-
+@logger.catch
 def SuggestFunny(msid, sms_from, body_of_sms):
     """Return some ideas for team names."""
     logger.info("Funny team name suggestions entered.")
     return msid
 
-
+@logger.catch
 def SuggestSerious(msid, sms_from, body_of_sms):
     """Suggest only serious names."""
     logger.info("Serious team name suggestions entered.")
     return msid
 
-
+@logger.catch
 def ChangePlayerName(msid, sms_from, body_of_sms):
     """Allow player to correct their own name."""
     logger.info("Change players name function entered.")
@@ -301,7 +304,7 @@ def ChangePlayerName(msid, sms_from, body_of_sms):
         reply = "Sorry, I did not understand."
     return reply
 
-
+@logger.catch
 def ChangeTeamName(msid, sms_from, body_of_sms):
     """Allow player to change the name of their team.
     This will work best after the night has been started
@@ -311,13 +314,13 @@ def ChangeTeamName(msid, sms_from, body_of_sms):
     logger.info("Change team name function entered.")
     return msid
 
-
+@logger.catch
 def ReturnHelpInfo(msid, sms_from, body_of_sms):
     """Returns basic info about this app and the trivia competition."""
     logger.info("Help info function entered.")
     return HELPFUL_INFO
 
-
+@logger.catch
 def ShuffleTables(msid, sms_from, body_of_sms):
     """Primary function of this app is to match players to tables.
     This function 'randomly' assigns players to tables taking into account
@@ -354,7 +357,7 @@ def ShuffleTables(msid, sms_from, body_of_sms):
         return tbl_dict
 
     # Begin ShuffleTables:
-    logger.info("Shuffle players function entered.")
+    logger.info("Shuffle tables function entered.")
     TABLE_NAMES = [
         "gamma",
         "epsilon",
@@ -431,7 +434,7 @@ def ShuffleTables(msid, sms_from, body_of_sms):
     tables = least_meetups.keys()
     return "Players have been assigned tables."
 
-
+@logger.catch
 def StartGame(msid, sms_from, body_of_sms):
     """Locks-in the table assignments and updates each player's database to record
     the event of these players being at the same table.
@@ -464,7 +467,7 @@ def StartGame(msid, sms_from, body_of_sms):
                 # for now it just a list with duplicates.
     return "Players have been notified."
 
-
+@logger.catch
 def ChangeTeamSize(msid, sms_from, body_of_sms):
     """Sets the maximum target size for tables.
     Due to players having +1's some tables could go over this limit.
@@ -486,7 +489,7 @@ def ChangeTeamSize(msid, sms_from, body_of_sms):
         return "Error. New table size not understood."
     return "".join(["New table size = ", str(TABLESIZE)])
 
-
+@logger.catch
 def Send_Announcement(msid, sms_from, body_of_sms):
     """Send an SMS to ALL registered players."""
     # Remove the keyword 'Announcement' from the body_of_sms before sending.
@@ -496,7 +499,7 @@ def Send_Announcement(msid, sms_from, body_of_sms):
         Send_SMS(announcement, player)
     return
 
-
+@logger.catch
 def Send_common_commands_help(msid, sms_from, body_of_sms):
     logger.debug(
         "".join(
@@ -505,7 +508,7 @@ def Send_common_commands_help(msid, sms_from, body_of_sms):
     )
     return MOST_COMMON_HELP
 
-
+@logger.catch
 def Send_Webform_help(msid, sms_from, body_of_sms):
     logger.debug(
         "".join(
@@ -514,7 +517,7 @@ def Send_Webform_help(msid, sms_from, body_of_sms):
     )
     return WEBFORM_HELP
 
-
+@logger.catch
 def Send_players_list(msid, sms_from, body_of_sms):
     """Send an SMS to CONTROLLER of ALL registered players."""
     player_list = []
@@ -592,14 +595,14 @@ if CLIENT == None:
     print("Did you re-start VScode?")
     sys.exit(1)
 
-
+@logger.catch
 def Send_SMS(text, receipient):
     # TODO place a block on SMS between 10pm and 8am
     logger.info("".join([text, ":-to-:", receipient]))
     CLIENT.messages.create(body=text, from_=TWILLIO_SMS_NUMBER, to=receipient)
     return
 
-
+@logger.catch
 def Respond_to(msid, sms_from, body_of_sms):
     response = update_caller_database(msid, sms_from, body_of_sms)
     logger.info(pprint_dicts(players_database[sms_from]))
@@ -624,11 +627,11 @@ def Respond_to(msid, sms_from, body_of_sms):
         logger.info("No command words found in this SMS.")
         logger.debug(f"Checking for a trivia answer form in SMS...")
         response = Check_for_webform_answer_submission(
-            msid, sms_from, body_of_sms, players_database[CURRENT_TEAM_NAME]
+            msid, sms_from, body_of_sms, players_database[sms_from][CURRENT_TEAM_NAME]
         )
     return response
 
-
+@logger.catch
 def update_caller_database(msid, sms_from, body_of_sms):
     response = "The Robots are coming!  LoL  Head for the hills "
     response = "".join([response, players_database[sms_from][CALLERNAME]])
@@ -649,12 +652,12 @@ def update_caller_database(msid, sms_from, body_of_sms):
         players_database[sms_from][RECENTCALL] = dt.datetime.now(pytz.timezone("UTC"))
     return response
 
-
+@logger.catch
 def ask_caller_their_name():
     logger.info("Asking the caller their name.")
     return "Hello! I don't have your number in my records. Could you please tell me your name?"
 
-
+@logger.catch
 def check_sms_for_name(msid, sms_from, body_of_sms):
     # Function to extract the proper names from free form text.
     logger.info("Searching the sms for the callers name.")
@@ -694,21 +697,17 @@ def sms_reply():
     logger.info(sms_MSID)
     logger.info(sms_from)
     logger.info(sms_body)
-    # Start our TwiML response by creating a new response object.
-    sms_response = MessagingResponse()
-    logger.info(sms_response)
     # Generate an appropriate response (if any)
     reply = Respond_to(sms_MSID, sms_from, sms_body)
     if reply == "":
         logger.info("No response needed.")
     else:
         logger.info(reply)
-    sms_response.message(reply)
-    logger.info(str(sms_response))
+    Send_SMS(reply, sms_from)
     logger.info("Updating database...")
     pickle.dump(players_database, open(DATABASE_PATHOBJ, "wb"))
     logger.info("Returning control to Flask.")
-    return str(sms_response)
+    return reply
 
 
 if __name__ == "__main__":
