@@ -80,7 +80,7 @@ import datetime as dt
 from pathlib import Path
 import pytz
 import nltk
-
+from Webform_filler import Check_for_webform_answer_submission
 nltk.download("punkt")
 nltk.download("stopwords")
 nltk.download("averaged_perceptron_tagger")
@@ -565,9 +565,6 @@ CONTROLLER_ONLY_COMMANDS = [
 # Save a dictionary into a pickle file.
 import pickle
 
-# pickle.dump( players_database, open( DATABASE_PATHOBJ, "wb" ) )
-# retrieve database:
-# players_database = pickle.load( open( DATABASE_PATHOBJ, "rb" ) )
 if DATABASE_PATHOBJ.exists():
     logger.info("Recovering pickle database...")
     players_database = pickle.load(open(DATABASE_PATHOBJ, "rb"))
@@ -604,7 +601,7 @@ def Send_SMS(text, receipient):
 
 def Respond_to(msid, sms_from, body_of_sms):
     response = update_caller_database(msid, sms_from, body_of_sms)
-    logger.debug(pprint_dicts(players_database[sms_from]))
+    logger.info(pprint_dicts(players_database[sms_from]))
     cmnds = COMMANDS.keys()
     logger.info(cmnds)
     for word in cmnds:
@@ -615,12 +612,19 @@ def Respond_to(msid, sms_from, body_of_sms):
                     response = COMMANDS[word](msid, sms_from, body_of_sms)
                 else:
                     logger.info("Command not available to this user.")
-                    response = "Sorry, That command is only available to the controller of this app."
+                    response = "Sorry, That command is only available to the CONTROLLER of this app."
             else:
                 response = COMMANDS[word](msid, sms_from, body_of_sms)
             # break loop here to stop after first command word found.
             break
+        else:
+            logger.debug("".join(["Did not find ", word, " in ", str(body_of_sms)]))
+    else:
+        logger.info("No command words found in this SMS.")
+        logger.debug(f'Checking for a trivia answer form in SMS...')
+        response = Check_for_webform_answer_submission(msid, sms_from, body_of_sms)
     return response
+
 
 
 def update_caller_database(msid, sms_from, body_of_sms):
@@ -666,7 +670,7 @@ def check_sms_for_name(msid, sms_from, body_of_sms):
     )
 
 
-Send_SMS("SpeedTrivia program start.", "+18125577095")
+Send_SMS("SpeedTrivia program start.", CONTROLLER)
 
 logger.info("Instantiating Flask App:")
 SpeedTriviaApp = Flask(__name__)
