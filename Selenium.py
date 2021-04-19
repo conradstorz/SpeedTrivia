@@ -229,7 +229,7 @@ def Fill_and_submit_trivia_form(data):
             fields_and_functions[field]["func"](
                 web, value, fields_and_functions[field]["fld"]
             )
-    sleep(5)
+    sleep(10)
     web.close()
     return 'Trivia form sent.'
 
