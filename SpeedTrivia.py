@@ -85,6 +85,7 @@ import random
 # import our private repo of functions and constants
 import ST_common as stc
 import ST_twilio as tw
+from Webform_filler import Check_for_webform_answer_submission
 
 FILENAME = __file__
 FILENAME_PATHOBJ = Path(__file__)
@@ -223,6 +224,7 @@ def Respond_to(msid, sms_from, body_of_sms):
             logger.debug("".join(["Did not find ", word, " in ", str(body_of_sms)]))
     else:
         logger.info("No command words found in this SMS.")
+        response = Check_for_webform_answer_submission(msid, sms_from, body_of_sms)
     return response
 
 

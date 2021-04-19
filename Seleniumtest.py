@@ -203,6 +203,13 @@ def Fill_and_submit_trivia_form(data):
     the 'answer' and 'field' variable to be a list of 4 items each corresponding to
     the box 'field label' and 'answer text' for each of the four answers.
     Tiebrasker round is different in that it only has an answer and no points field.
+    Example data dictionary:
+    {   "team": "My Team Name",
+        "round": "1",  # values are 1-6, Halftime, Final, Tiebreaker
+        "question": "2",  # values are 1-3
+        "points": "6",  # firstround is 2,4,6  secondround is 5,7,9
+        "answer": "Place your answer here",
+        "submit": True,}  # use False for testing.
     """
     web = webdriver.Chrome()
     web.get("https://form.jotform.com/202575177230149")
@@ -224,7 +231,7 @@ def Fill_and_submit_trivia_form(data):
             )
     sleep(5)
     web.close()
-    return
+    return 'Trivia form sent.'
 
 
 @logger.catch
