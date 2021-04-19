@@ -231,7 +231,7 @@ def Fill_and_submit_trivia_form(data):
             )
     sleep(10)
     web.close()
-    return 'Trivia form sent.'
+    return "Trivia form sent."
 
 
 @logger.catch

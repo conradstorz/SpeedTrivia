@@ -81,6 +81,7 @@ from pathlib import Path
 import pytz
 import nltk
 from Webform_filler import Check_for_webform_answer_submission
+
 nltk.download("punkt")
 nltk.download("stopwords")
 nltk.download("averaged_perceptron_tagger")
@@ -621,10 +622,11 @@ def Respond_to(msid, sms_from, body_of_sms):
             logger.debug("".join(["Did not find ", word, " in ", str(body_of_sms)]))
     else:
         logger.info("No command words found in this SMS.")
-        logger.debug(f'Checking for a trivia answer form in SMS...')
-        response = Check_for_webform_answer_submission(msid, sms_from, body_of_sms)
+        logger.debug(f"Checking for a trivia answer form in SMS...")
+        response = Check_for_webform_answer_submission(
+            msid, sms_from, body_of_sms, players_database[CURRENT_TEAM_NAME]
+        )
     return response
-
 
 
 def update_caller_database(msid, sms_from, body_of_sms):
