@@ -110,12 +110,12 @@ def ProperNounExtractor(text):
 def how_long_ago_is(past_time):
     delta_ = dt.datetime.now(pytz.timezone("UTC")) - past_time
     days_ = delta_ / dt.timedelta(days=1)
-    logger.debug("".join(["Time since ", str(days_)]))
+    logger.debug(f"Time since last contact: {days_:.2f} days.")
     return days_
 
 
 TWILLIO_SMS_NUMBER = "+18122038235"  # Paoli native number bought from Twilio
-DATABASE_PATHOBJ = Path("".join([FILENAME, ".db"]))
+DATABASE_PATHOBJ = Path(f"{FILENAME}.db")
 TABLESIZE = 3
 CONTROLLER = "+18125577095"
 FROZEN = False
@@ -132,7 +132,7 @@ logger.remove()  # removes the default console logger provided by Loguru.
 # I find it to be too noisy with details more appropriate for file logging.
 # create a new log file for each run of the program
 logger.add(
-    "".join([FILENAME, "_{time}.log"]),
+    f"{FILENAME}_{time}.log",  # TODO fix this
     rotation="Sunday",
     level="DEBUG",
     encoding="utf8",
@@ -299,7 +299,7 @@ def ChangePlayerName(msid, sms_from, body_of_sms):
     callername = ProperNounExtractor(body_of_sms)
     if callername != None:
         players_database[sms_from][CALLERNAME] = callername
-        reply = "".join(["Thanks ", callername, "! Your name has been updated."])
+        reply = f"Thanks {callername}! Your name has been updated."
     else:
         reply = "Sorry, I did not understand."
     return reply
@@ -334,12 +334,12 @@ def ShuffleTables(msid, sms_from, body_of_sms):
         plus_ones = 0
         for player in player_list:  # Find all the extra players in this list.
             plus_ones += players_database[player][PLUS_ONES]
-        logger.debug("".join([str(plus_ones), " Extra players"]))
+        logger.debug(f"{plus_ones} Extra players")
         return plus_ones
 
     def open_chairs(table):
         open_chrs = TABLESIZE - (len(table) + extra_players(table))
-        logger.debug("".join([str(open_chrs), " Open chairs."]))
+        logger.debug(f"{open_chrs} Open chairs.")
         if open_chrs < 1:
             return 0
         return open_chrs
@@ -349,10 +349,10 @@ def ShuffleTables(msid, sms_from, body_of_sms):
         for player in players:
             while player != None:
                 rnd_table = random.choice(tables)
-                logger.debug("".join([str(rnd_table), " random table."]))
+                logger.debug(f"{rnd_table} random table.")
                 if open_chairs(tbl_dict[rnd_table]) > 0:
                     tbl_dict[rnd_table].append(player)
-                    logger.debug("".join([player, " assigned to table."]))
+                    logger.debug(f"{player} assigned to table.")
                     player = None
         return tbl_dict
 
@@ -378,12 +378,12 @@ def ShuffleTables(msid, sms_from, body_of_sms):
         )
     )
     TOT_PLAYERS = len(TONIGHTS_PLAYERS) + extra_players(TONIGHTS_PLAYERS)
-    logger.debug("".join([str(TOT_PLAYERS), " Total players."]))
+    logger.debug(f"{TOT_PLAYERS} Total players.")
     NUM_OF_TABLES = int(TOT_PLAYERS / TABLESIZE) + 1
     if NUM_OF_TABLES < 1:
         NUM_OF_TABLES = 1
     tables = TABLE_NAMES[:NUM_OF_TABLES]
-    logger.debug("".join([str(tables), " Tonights tables."]))
+    logger.debug(f"{tables} Tonights tables.")
 
     def Proposed_assignments():
         proposed_tables = Assign_Tables(tables, TONIGHTS_PLAYERS)
@@ -409,24 +409,24 @@ def ShuffleTables(msid, sms_from, body_of_sms):
                         table_collisions += 1
                         Total_collisions += 1
                         # increment the total counter for each collision
-            logger.debug("".join(["Table collisions: ", str(table_collisions)]))
-        logger.debug("".join(["Player collisions: ", str(Total_collisions)]))
+            logger.debug(f"Table collisions: {table_collisions}")
+        logger.debug(f"Player collisions: {Total_collisions}")
         return Total_collisions
 
     NUMBER_OF_GUESSES = len(TONIGHTS_PLAYERS)
     guesses = dict()
     for itr in range(NUMBER_OF_GUESSES):
         guesses[itr] = Proposed_assignments()
-        logger.debug("".join(["Guess ", str(itr), " is ", pprint_dicts(guesses[itr])]))
+        logger.debug(f"Guess {itr} is {pprint_dicts(guesses[itr])}")
     least_meetups = dict()
     meets = 80000
     for guess in guesses.keys():
-        logger.debug("".join(["Calculating past meetups for proposal: ", str(guess)]))
+        logger.debug(f"Calculating past meetups for proposal: {guess}")
         tnom = Total_number_of_meetups(guesses[guess])
         if meets > tnom:
             meets = tnom
             least_meetups = guesses[guess]
-    logger.debug("".join(["Most unique tables are: ", pprint_dicts(least_meetups)]))
+    logger.debug(f"Most unique tables are: {pprint_dicts(least_meetups)}")
     for table in least_meetups.keys():
         for player in least_meetups[table]:
             TABLE_ASSIGNED[player] = table
@@ -453,7 +453,7 @@ def StartGame(msid, sms_from, body_of_sms):
             player,
         )"""
         logger.info(
-            "".join(["SpeedTrivia suggests you sit at table: ", TABLE_ASSIGNED[player]])
+            f"SpeedTrivia suggests you sit at table: {TABLE_ASSIGNED[player]}"
         )
         time.sleep(2)
         # add other players from table to history list
@@ -461,7 +461,7 @@ def StartGame(msid, sms_from, body_of_sms):
             if teammate == player:
                 pass
             else:
-                logger.debug("".join(["Adding :", teammate, " to ", player]))
+                logger.debug(f"Adding : {teammate} to {player}")
                 players_database[player][PARTNER_HISTORY].append(teammate)
                 # TODO consider if this should be a database with teammates and dates.
                 # for now it just a list with duplicates.
@@ -487,7 +487,7 @@ def ChangeTeamSize(msid, sms_from, body_of_sms):
         TABLESIZE = number
     else:
         return "Error. New table size not understood."
-    return "".join(["New table size = ", str(TABLESIZE)])
+    return f"New table size = {TABLESIZE}"
 
 @logger.catch
 def Send_Announcement(msid, sms_from, body_of_sms):
@@ -543,20 +543,20 @@ COMMANDS = {
     "Common": Send_common_commands_help,  # provide help using most common commands.
     "Minus": RemoveReservation,  # remove a +1 from the caller's table.
     "Table": ReturnTableName,  # return callers table name.
-    "Team": SetTeamName,  # return Team name if exists or ask if None.
+    # "Team": SetTeamName,  # return Team name if exists or ask if None.
     "Status": ReturnStatus,  # return caller status info.
     "Plus": AddReservation,  # add another +1 to the caller's table.
     "Funny": SuggestFunny,  # return a random "funny" team name from a list.
     "Serious": SuggestSerious,  # return a "serious" team name.
-    "Change-Name": ChangePlayerName,  # delete the player name and ask for a new one.
-    "Change-Team": ChangeTeamName,  # delete the team name and ask for a new one.
+    "ChangeName": ChangePlayerName,  # delete the player name and ask for a new one.
+    "ChangeTeam": ChangeTeamName,  # delete the team name and ask for a new one.
     "time": ReturnHelpInfo,  # return the HELP file with info on start time of game.
     "Helpme": ReturnHelpInfo,  # return the HELP file with info on using the app.
     "Shuffle": ShuffleTables,  # CONTROLLER ONLY: re-shuffle table assignments.
     "Start": StartGame,  # CONTROLLER ONLY: Lock-in the table assignments for thid game night.
     "Size": ChangeTeamSize,  # CONTROLLER ONLY: Change the number of players per table.
     "Announcement": Send_Announcement,  # CONTROLLER ONLY: Make a SMS note to all registered players.
-    "Players-list": Send_players_list,  # CONTROLLER ONLY: Return a list of ALL players to CONTROLLER.
+    "PlayersList": Send_players_list,  # CONTROLLER ONLY: Return a list of ALL players to CONTROLLER.
 }
 CONTROLLER_ONLY_COMMANDS = [
     "Announcement",
@@ -567,7 +567,8 @@ CONTROLLER_ONLY_COMMANDS = [
 ]
 
 # Save a dictionary into a pickle file.
-import pickle
+import pickle  # TODO put all of pickle code into seperate .py file and import
+                # export commands GetDB() and PutDB()
 
 if DATABASE_PATHOBJ.exists():
     logger.info("Recovering pickle database...")
@@ -577,7 +578,9 @@ else:
     pickle.dump(players_database, open(DATABASE_PATHOBJ, "wb"))
 
 
-# Twilio token setup:
+# Twilio token setup: 
+# TODO move all Twilio app support to external .py file
+# export commands GetClientID() and Send_SMS()
 CLIENT = None
 if not os.system("set ACCOUNT_SID"):  # are these return values inverted?
     logger.info("Twilio ACCOUNT_SID found.")
@@ -598,19 +601,34 @@ if CLIENT == None:
 @logger.catch
 def Send_SMS(text, receipient):
     # TODO place a block on SMS between 10pm and 8am
-    logger.info("".join([text, ":-to-:", receipient]))
+    logger.info(f"Sending: '{text}' :->to->: {receipient}")
     CLIENT.messages.create(body=text, from_=TWILLIO_SMS_NUMBER, to=receipient)
     return
 
 @logger.catch
 def Respond_to(msid, sms_from, body_of_sms):
+    """Takes incoming SMS details and determines correct response.
+
+    Args:
+        msid (str)): Twilio message ID
+        sms_from (str): 12 character phone number
+        body_of_sms (str): Actual text os incoming SMS
+
+    Returns:
+        str: The string sent back to the caller.
+    """
     response = update_caller_database(msid, sms_from, body_of_sms)
     logger.info(pprint_dicts(players_database[sms_from]))
     cmnds = COMMANDS.keys()
     logger.info(cmnds)
     for word in cmnds:
         if word.lower() in str(body_of_sms).lower():
-            logger.info("".join(["Found command: ", word]))
+            # TODO Ensure that only whole words are matched.
+            # search = word.lower()
+            # strn = str(body_of_sms).lower()
+            # matches = re.findall(r"\b" + search + r"\b", strn)
+            # matches is a list of each match.
+            logger.info(f"Found command: {word}")
             if word in CONTROLLER_ONLY_COMMANDS:
                 if sms_from == CONTROLLER:
                     response = COMMANDS[word](msid, sms_from, body_of_sms)
@@ -622,7 +640,7 @@ def Respond_to(msid, sms_from, body_of_sms):
             # break loop here to stop after first command word found.
             break
         else:
-            logger.debug("".join(["Did not find ", word, " in ", str(body_of_sms)]))
+            logger.debug(f"Did not find '{word}' in '{body_of_sms}'")
     else:
         logger.info("No command words found in this SMS.")
         logger.debug(f"Checking for a trivia answer form in SMS...")
@@ -633,13 +651,12 @@ def Respond_to(msid, sms_from, body_of_sms):
 
 @logger.catch
 def update_caller_database(msid, sms_from, body_of_sms):
-    response = "The Robots are coming!  LoL  Head for the hills "
-    response = "".join([response, players_database[sms_from][CALLERNAME]])
+    response = f"The Robots are coming!  LoL  Head for the hills {players_database[sms_from][CALLERNAME]}"
     players_database[sms_from][MESSAGE_HISTORY].append((body_of_sms, msid))
     messages_list = players_database[sms_from][MESSAGE_HISTORY]
     # truncate list at last 5 messages.
     players_database[sms_from][MESSAGE_HISTORY] = messages_list[-5:]
-    logger.info("".join(["Caller's Name: ", players_database[sms_from][CALLERNAME]]))
+    logger.info(f"Caller's Name: {players_database[sms_from][CALLERNAME]}")
     if players_database[sms_from][FIRSTCALL] == None:
         logger.info("First time caller.")
         Send_SMS("New Caller logged.", CONTROLLER)
@@ -665,14 +682,12 @@ def check_sms_for_name(msid, sms_from, body_of_sms):
     if callername != None:
         logger.info("Found a name:")
         logger.info(callername)
-        Send_SMS("".join(["New Caller is: ", callername]), CONTROLLER)
+        Send_SMS(f"New Caller is: {callername}", CONTROLLER)
         players_database[sms_from][CALLERNAME] = callername
     else:
         logger.info("Couldn't find a name.")
         return "Sorry. I didn't understand.  Please try again. Feel free to speak in full sentences."
-    return "".join(
-        ["Thanks ", callername, "! Glad to meet you. Welcome to SpeedTrivia."]
-    )
+    return f"Thanks {callername}! Glad to meet you. Welcome to SpeedTrivia."
 
 
 Send_SMS("SpeedTrivia program start.", CONTROLLER)
@@ -689,7 +704,7 @@ def sms_reply():
     """
     # log this number to track memory useage and monitor for memory leaks.
     memory_footprint = sys.getallocatedblocks()
-    logger.debug("".join(["Running program footprint is: ", str(memory_footprint)]))
+    logger.debug(f"Running program footprint is: {memory_footprint}")
     logger.info("Message received:")
     sms_body = request.values.get("Body", None)
     sms_from = request.values.get("From", None)
