@@ -6,7 +6,7 @@ from Selenium import Fill_and_submit_trivia_form
 from pprint import pformat as pprint_dicts
 
 
-def Check_for_webform_answer_submission(msid, sms_from, body_of_sms, teamname):
+def Check_for_webform_answer_submission(msid, sms_from, body_of_sms, teamname, Send=False):
     """Take a string in the form: RxQxPxxAany text to the end of the string as an answer.
 
     Args:
@@ -19,7 +19,7 @@ def Check_for_webform_answer_submission(msid, sms_from, body_of_sms, teamname):
     """
     data = {}
     data["team"] = teamname
-    data["submit"] = False
+    data["submit"] = Send
     t = body_of_sms.lower()
     if t[0] == "r":
         # First character matches pattern
@@ -59,7 +59,7 @@ def Check_for_webform_answer_submission(msid, sms_from, body_of_sms, teamname):
                 data["answer"] = Answers
                 data["points"] = Points
         logger.info(f"SMS decoded as: {pprint_dicts(data)}")
-        result = Fill_and_submit_trivia_form(data)
+        result = Fill_and_submit_trivia_form(data, Send=data['submit'])
     else:
         logger.info(f"SMS does not match a trivia answer format.")
         result = "Did not recognize a trivia answer."  # no response to the sender

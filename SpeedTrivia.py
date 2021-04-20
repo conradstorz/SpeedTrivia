@@ -54,7 +54,7 @@ CRAZY FUTURE FUNCTIONALITY:
 """
 HELPFUL_INFO = """Welcome to SpeedTrivia. SpeedTrivia is designed to be a tool that
 matches players with other players randomly. If you brought a favorite player with you
-then simply reply to this number with 'Add a plus one to my table'. You can add as many
+then simply reply to this number with the keyword 'plus'. You can add as many
 seats as you need. Thanks for attending!
 """
 TIME_INFO = """Trivia at Mac's Hideaway is Tuesday nights 
@@ -66,7 +66,7 @@ MOST_COMMON_HELP = """Common commands are add/remove plus ones.
 "Minus 1" removes 1. 
 "Plus 2" adds 2 extra players.
 "Status" tells you how many plus ones you have."""
-# Download the twilio-python library from twilio.com/docs/libraries/python
+
 import os
 import sys
 import time
@@ -132,7 +132,7 @@ logger.remove()  # removes the default console logger provided by Loguru.
 # I find it to be too noisy with details more appropriate for file logging.
 # create a new log file for each run of the program
 logger.add(
-    f"{FILENAME}_{time}.log",  # TODO fix this
+    f"{FILENAME}_{PROGRAM_START_TIME.strftime('%Y%m%d_%H%M%S%Z')}.log",
     rotation="Sunday",
     level="DEBUG",
     encoding="utf8",
@@ -182,13 +182,7 @@ def AddReservation(msid, sms_from, body_of_sms):
     except (ValueError, IndexError) as e:
         number = 1
     players_database[sms_from][PLUS_ONES] += number
-    return "".join(
-        [
-            "You now have ",
-            str(players_database[sms_from][PLUS_ONES] + 1),
-            " reserved seats at your table counting yourself.",
-        ]
-    )
+    return f"You now have {players_database[sms_from][PLUS_ONES] + 1} reserved seats at your table counting yourself."
 
 @logger.catch
 def RemoveReservation(msid, sms_from, body_of_sms):
@@ -206,21 +200,13 @@ def RemoveReservation(msid, sms_from, body_of_sms):
         players_database[sms_from][PLUS_ONES] -= number
     else:
         players_database[sms_from][PLUS_ONES] = 0
-    return "".join(
-        [
-            "You now have ",
-            str(players_database[sms_from][PLUS_ONES] + 1),
-            " reserved seats at your table counting yourself.",
-        ]
-    )
-
+    return f"You now have {players_database[sms_from][PLUS_ONES] + 1} reserved seats at your table counting yourself."
+    
 @logger.catch
 def ReturnTableName(msid, sms_from, body_of_sms):
     """Table name is an index value. (e.g. Gamma, delta, epsilon...)"""
     logger.info("return player team table label function entered.")
-    return "".join(
-        ["Your table is ", players_database[sms_from][CURRENT_TABLE_ASSIGNMENT], "."]
-    )
+    return f"Your table is {players_database[sms_from][CURRENT_TABLE_ASSIGNMENT]}."
 
 @logger.catch
 def SetTeamName(msid, sms_from, body_of_sms):
@@ -228,8 +214,7 @@ def SetTeamName(msid, sms_from, body_of_sms):
     When entered for one player applies for all at table.
     """
     logger.info("Set team name function entered.")
-    # TODO remove commandword from string body_of_sms
-    teamname = body_of_sms[11:]
+    teamname = body_of_sms
     players_database[sms_from][CURRENT_TEAM_NAME] = teamname
     return f'Your new team name is: {teamname}'
 
@@ -256,28 +241,10 @@ def Tonights_players():
 def ReturnStatus(msid, sms_from, body_of_sms):
     """Return various details of this player."""
     logger.info("Send status to player function entered.")
-    stat = "".join(
-        [
-            players_database[sms_from][CALLERNAME],
-            " your table name is ",
-            players_database[sms_from][CURRENT_TABLE_ASSIGNMENT],
-            " and you have ",
-            str(players_database[sms_from][PLUS_ONES]),
-            " extra seats reserved.",
-        ]
-    )
+    # TODO add team name
+    stat = f"{players_database[sms_from][CALLERNAME]} your table name is {players_database[sms_from][CURRENT_TABLE_ASSIGNMENT]} and you have {players_database[sms_from][PLUS_ONES]} extra seats reserved."
     if sms_from == CONTROLLER:
-        stat = "".join(
-            [
-                stat,
-                " --status: ",
-                str(TABLESIZE),
-                " per table. ",
-                str(len(Tonights_players())),
-                " players registered for tonight.",
-                str(tables),
-            ]
-        )
+        stat = f"{stat} --status: {TABLESIZE} per table. {len(Tonights_players())} players registered for tonight. {tables}"
     return stat
 
 @logger.catch
@@ -293,26 +260,15 @@ def SuggestSerious(msid, sms_from, body_of_sms):
     return msid
 
 @logger.catch
-def ChangePlayerName(msid, sms_from, body_of_sms):
+def ChangePlayerName(msid, sms_from, value_slice):
     """Allow player to correct their own name."""
     logger.info("Change players name function entered.")
-    callername = ProperNounExtractor(body_of_sms)
-    if callername != None:
-        players_database[sms_from][CALLERNAME] = callername
-        reply = f"Thanks {callername}! Your name has been updated."
+    if value_slice != None:
+        players_database[sms_from][CALLERNAME] = value_slice
+        reply = f"Thanks {value_slice}! Your name has been updated."
     else:
         reply = "Sorry, I did not understand."
     return reply
-
-@logger.catch
-def ChangeTeamName(msid, sms_from, body_of_sms):
-    """Allow player to change the name of their team.
-    This will work best after the night has been started
-    and the table assignments have been set. This functionality
-    is only useful for automated game answers processing.
-    """
-    logger.info("Change team name function entered.")
-    return msid
 
 @logger.catch
 def ReturnHelpInfo(msid, sms_from, body_of_sms):
@@ -369,14 +325,7 @@ def ShuffleTables(msid, sms_from, body_of_sms):
         "theta",
     ]
     TONIGHTS_PLAYERS = Tonights_players()
-    logger.debug(
-        "".join(
-            [
-                str(TONIGHTS_PLAYERS),
-                " Tonights players.",
-            ]
-        )
-    )
+    logger.debug(f"{TONIGHTS_PLAYERS} Tonights players.")
     TOT_PLAYERS = len(TONIGHTS_PLAYERS) + extra_players(TONIGHTS_PLAYERS)
     logger.debug(f"{TOT_PLAYERS} Total players.")
     NUM_OF_TABLES = int(TOT_PLAYERS / TABLESIZE) + 1
@@ -446,15 +395,8 @@ def StartGame(msid, sms_from, body_of_sms):
         # set players tablename
         players_database[player][CURRENT_TABLE_ASSIGNMENT] = TABLE_ASSIGNED[player]
         # Notify players by text of their table assignments.
-        """Send_SMS(
-            "".join(
-                ["SpeedTrivia suggests you sit at table: ", TABLE_ASSIGNED[player]]
-            ),
-            player,
-        )"""
-        logger.info(
-            f"SpeedTrivia suggests you sit at table: {TABLE_ASSIGNED[player]}"
-        )
+        # Send_SMS(f"SpeedTrivia suggests you sit at table: {TABLE_ASSIGNED[player]]}" ,player)
+        logger.info(f"SpeedTrivia suggests you sit at table: {TABLE_ASSIGNED[player]}")
         time.sleep(2)
         # add other players from table to history list
         for teammate in least_meetups[TABLE_ASSIGNED[player]]:
@@ -492,29 +434,22 @@ def ChangeTeamSize(msid, sms_from, body_of_sms):
 @logger.catch
 def Send_Announcement(msid, sms_from, body_of_sms):
     """Send an SMS to ALL registered players."""
-    # Remove the keyword 'Announcement' from the body_of_sms before sending.
+    logger.info('Entering bulk announcement function')
     announcement = body_of_sms
     for player in list_players_in_database():
         #  Attach the disclaimer instructions on how to STOP texts
-        Send_SMS(announcement, player)
-    return
+        # Send_SMS(announcement, player)
+        logger.info('Bulk announcement sent.')
+    return 'Bulk announcement sent.'
 
 @logger.catch
 def Send_common_commands_help(msid, sms_from, body_of_sms):
-    logger.debug(
-        "".join(
-            ["User: ", players_database[sms_from][CALLERNAME], " asked for Form-Help."]
-        )
-    )
+    logger.debug(f"User: {players_database[sms_from][CALLERNAME]} asked for Form-Help.")
     return MOST_COMMON_HELP
 
 @logger.catch
 def Send_Webform_help(msid, sms_from, body_of_sms):
-    logger.debug(
-        "".join(
-            ["User: ", players_database[sms_from][CALLERNAME], " asked for Form-Help."]
-        )
-    )
+    logger.debug(f"User: {players_database[sms_from][CALLERNAME]} asked for Form-Help.")
     return WEBFORM_HELP
 
 @logger.catch
@@ -522,16 +457,8 @@ def Send_players_list(msid, sms_from, body_of_sms):
     """Send an SMS to CONTROLLER of ALL registered players."""
     player_list = []
     for player in list_players_in_database():
-        player_list.append(
-            "".join(
-                [
-                    players_database[player][CALLERNAME],
-                    " with ",
-                    str(players_database[player][PLUS_ONES]),
-                    " extras. ",
-                ]
-            ),
-        )
+        player_list.append(f"{players_database[player][CALLERNAME]} with {players_database[player][PLUS_ONES]} extras. ")
+    # this .join is the best approach to combine all the strings in the list.
     message = "".join(player_list)
     Send_SMS(message, CONTROLLER)
     logger.debug(message)
@@ -543,13 +470,12 @@ COMMANDS = {
     "Common": Send_common_commands_help,  # provide help using most common commands.
     "Minus": RemoveReservation,  # remove a +1 from the caller's table.
     "Table": ReturnTableName,  # return callers table name.
-    # "Team": SetTeamName,  # return Team name if exists or ask if None.
     "Status": ReturnStatus,  # return caller status info.
     "Plus": AddReservation,  # add another +1 to the caller's table.
     "Funny": SuggestFunny,  # return a random "funny" team name from a list.
     "Serious": SuggestSerious,  # return a "serious" team name.
     "ChangeName": ChangePlayerName,  # delete the player name and ask for a new one.
-    "ChangeTeam": ChangeTeamName,  # delete the team name and ask for a new one.
+    "ChangeTeam": SetTeamName,  # delete the team name and ask for a new one.
     "time": ReturnHelpInfo,  # return the HELP file with info on start time of game.
     "Helpme": ReturnHelpInfo,  # return the HELP file with info on using the app.
     "Shuffle": ShuffleTables,  # CONTROLLER ONLY: re-shuffle table assignments.
@@ -622,21 +548,26 @@ def Respond_to(msid, sms_from, body_of_sms):
     cmnds = COMMANDS.keys()
     logger.info(cmnds)
     for word in cmnds:
-        if word.lower() in str(body_of_sms).lower():
+        command_slice = str(body_of_sms).lower()[:len(word)]
+        logger.debug(f'SMS slice from front of text: {command_slice}')
+        if word.lower() == command_slice:
             # TODO Ensure that only whole words are matched.
             # search = word.lower()
             # strn = str(body_of_sms).lower()
             # matches = re.findall(r"\b" + search + r"\b", strn)
             # matches is a list of each match.
             logger.info(f"Found command: {word}")
+            # slice off command from front of string
+            action_value = body_of_sms[len(word):]
+            logger.debug(f"Command action value is: {action_value}")
             if word in CONTROLLER_ONLY_COMMANDS:
                 if sms_from == CONTROLLER:
-                    response = COMMANDS[word](msid, sms_from, body_of_sms)
+                    response = COMMANDS[word](msid, sms_from, action_value)
                 else:
                     logger.info("Command not available to this user.")
                     response = "Sorry, That command is only available to the CONTROLLER of this app."
             else:
-                response = COMMANDS[word](msid, sms_from, body_of_sms)
+                response = COMMANDS[word](msid, sms_from, action_value)
             # break loop here to stop after first command word found.
             break
         else:
@@ -645,7 +576,8 @@ def Respond_to(msid, sms_from, body_of_sms):
         logger.info("No command words found in this SMS.")
         logger.debug(f"Checking for a trivia answer form in SMS...")
         response = Check_for_webform_answer_submission(
-            msid, sms_from, body_of_sms, players_database[sms_from][CURRENT_TEAM_NAME]
+            msid, sms_from, body_of_sms, players_database[sms_from][CURRENT_TEAM_NAME],
+            Send=True
         )
     return response
 

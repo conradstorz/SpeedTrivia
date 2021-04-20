@@ -8,7 +8,9 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
+from pprint import pformat as pprint_dicts
 
+SENDFORM = True
 TeamNameBoxID = "input_14"
 GameRoundBoxID = "input_17"
 GameQuestionBoxID = "input_18"
@@ -145,7 +147,6 @@ WEBFORM = {
     },
 }
 
-SENDFORM = False
 sample_answers = {
     "1": {
         "team": "FirstRound",
@@ -195,7 +196,7 @@ sample_answers = {
 }
 
 
-def Fill_and_submit_trivia_form(data):
+def Fill_and_submit_trivia_form(data, Send=False):
     """Launch a browser and fill fields of webform then submit.
     The format of the 'data' variable varies based on the form to be filled.
     Round 1 and Round 2 forms are identical differing only in the 'field labels' in use.
@@ -219,6 +220,7 @@ def Fill_and_submit_trivia_form(data):
     logger.debug(data)
     # fill the 'Round' value on the form first.
     Round = data.pop("round")
+    Submit = data.pop('submit')
     fields_and_functions["round"]["func"](
         web, Round, fields_and_functions["round"]["fld"]
     )
@@ -229,15 +231,21 @@ def Fill_and_submit_trivia_form(data):
             fields_and_functions[field]["func"](
                 web, value, fields_and_functions[field]["fld"]
             )
-    sleep(5)
+    # Now submit the form if True
+    fields_and_functions["submit"]["func"](
+        web, Submit, fields_and_functions["submit"]["fld"]
+    )    
+    sleep(.5)
     web.close()
-    return "Trivia form sent."
+    data['submit'] = Submit  # place submit field back into dictionary
+    data['round'] = Round  # place round entry back into dictionary
+    return f"Trivia form sent:\n{pprint_dicts(data)}"
 
 
 @logger.catch
 def main():
     for k, sampleform in sample_answers.items():
-        Fill_and_submit_trivia_form(sample_answers[k])
+        Fill_and_submit_trivia_form(sample_answers[k], Send=False)
     sleep(1)
     sys.exit(0)
 
