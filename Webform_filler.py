@@ -58,7 +58,7 @@ def Check_for_webform_answer_submission(msid, sms_from, body_of_sms, teamname, S
                 Answers = body_of_sms[6:].split("#")
                 data["answer"] = Answers
                 data["points"] = Points
-        logger.info(f"SMS decoded as: {pprint_dicts(data)}")
+        logger.info(f"SMS decoded as:\n{pprint_dicts(data)}")
         result = Fill_and_submit_trivia_form(data, Send=data['submit'])
     else:
         logger.info(f"SMS does not match a trivia answer format.")
