@@ -11,7 +11,7 @@ from selenium.webdriver.support.ui import Select
 from pprint import pformat as pprint_dicts
 
 THE_JOTFORM_URL = "https://form.jotform.com/202575177230149"
-SENDFORM = True  # Control the behaviour of the sample values during testing.
+SENDFORM = False  # Control the behaviour of the sample values during testing.
 TeamNameBoxID = "input_14"
 GameRoundBoxID = "input_17"
 GameQuestionBoxID = "input_18"
@@ -375,10 +375,14 @@ def Fill_and_submit_trivia_form(data, Send=False):
     browser_token = webdriver.Chrome()
     browser_token.implicitly_wait(10)
     browser_token.get(THE_JOTFORM_URL)
-    fields_and_functions = WEBFORM[data[ROUND]]
-    logger.debug(fields_and_functions)
-    logger.debug("...")
     logger.debug(data)
+    if data[ROUND] in WEBFORM.keys():
+        fields_and_functions = WEBFORM[data[ROUND]]
+        logger.debug(fields_and_functions)
+        logger.debug("...")
+    else:
+        logger.error(f'Bad round name: {data[ROUND]}')
+        return f"Could not submit form."
     # fill the 'Round' value on the form first.
     Round = data.pop(ROUND)
     Submit = data.pop(SUBMIT)
@@ -480,13 +484,29 @@ def main():
             SUBMIT: SENDFORM,
         },
         "6": {
-            TEAM_KEY: "Second Round",
+            TEAM_KEY: "Error Round",
             ROUND: "6",
             QUESTION: "2",
             POINTS: "2",  # this is an error. 2 is not valid in round 6
             ANSWER: "second round answer",
             SUBMIT: SENDFORM,
         },
+        "5": {
+            TEAM_KEY: "Error Round",
+            ROUND: "7",  # this is an error. 7 is not valid round.
+            QUESTION: "2",
+            POINTS: "9",
+            ANSWER: "second round answer",
+            SUBMIT: SENDFORM,
+        },        
+        "2": {
+            TEAM_KEY: "Error Round",  # NOTE: this field is huge
+            ROUND: "1",
+            QUESTION: "4",  # this is an error. 4 is not valid question number.
+            POINTS: "2",
+            ANSWER: "second round answer",  # NOTE: this field is also huge
+            SUBMIT: SENDFORM,
+        },           
     }
 
     for k, sampleform in sample_answers.items():
