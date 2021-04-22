@@ -544,6 +544,8 @@ def Respond_to(msid, sms_from, body_of_sms):
         str: The string sent back to the caller.
     """
     response = update_caller_database(msid, sms_from, body_of_sms)
+    if response == "Hello! I don't have your number in my records. Could you please tell me your name?":
+        return response
     logger.info(pprint_dicts(players_database[sms_from]))
     cmnds = COMMANDS.keys()
     logger.info(cmnds)
@@ -611,6 +613,8 @@ def check_sms_for_name(msid, sms_from, body_of_sms):
     # Function to extract the proper names from free form text.
     logger.info("Searching the sms for the callers name.")
     callername = ProperNounExtractor(body_of_sms)
+    if callername == 'Changename':
+        callername = body_of_sms.split()[1]  # Kludge
     if callername != None:
         logger.info("Found a name:")
         logger.info(callername)
