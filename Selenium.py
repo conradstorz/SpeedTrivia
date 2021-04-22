@@ -2,7 +2,7 @@ import sys
 from time import sleep
 from selenium import webdriver
 from loguru import logger
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
@@ -10,7 +10,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
 from pprint import pformat as pprint_dicts
 
-SENDFORM = True
+THE_JOTFORM_URL = "https://form.jotform.com/202575177230149"
+SENDFORM = True  # Control the behaviour of the sample values during testing.
 TeamNameBoxID = "input_14"
 GameRoundBoxID = "input_17"
 GameQuestionBoxID = "input_18"
@@ -26,22 +27,36 @@ HalftimeAndFinalAnswerBoxIDs = [
 ]
 FinalQuestionWagerID = "input_24"
 
+FIELD_KEY = "fld"
+PROPER_FUNCTION = "func"
+VALID_RESPONSES = "valid_response"
+ROUND = "round"
+SUBMIT = "submit"
+TEAM_KEY = "team"
 
 def Fill_a_field(webobj, value, field_id):
     logger.debug("fill field")
     logger.debug(f"field: {field_id} Value: {value}")
-    sleep(0.1)
-    field = webobj.find_element_by_id(field_id)
-    field.send_keys(value)
+    try:
+        field = webobj.find_element_by_id(field_id)
+        field.send_keys(value)
+        logger.debug("Found and entered value success.")
+    except NoSuchElementException as e:
+        logger.error(f"Didn't find {value} in {field_id}")
+        logger.error(f"{e}")
     return
 
 
 def Fill_a_dropdown(webobj, value, field_id):
     logger.debug("fill dropdown")
     logger.debug(f"field: {field_id} Value: {value}")
-    sleep(0.1)
-    dropdn = Select(webobj.find_element_by_id(field_id))
-    dropdn.select_by_value(value)
+    try:
+        dropdn = Select(webobj.find_element_by_id(field_id))
+        dropdn.select_by_value(value)
+        logger.debug("Found and entered value success.")
+    except NoSuchElementException as e:
+        logger.error(f"Didn't find {value} in {field_id}")
+        logger.error(f"{e}")
     return
 
 
@@ -55,14 +70,18 @@ def Fill_four_answers(webobj, values, field_ids):
 
 
 def Click_a_button(webobj, value, field_id):
-    sleep(0.1)
     logger.debug("click option")
     logger.debug(f"field: {field_id} Value: {value}")
-    button = webobj.find_element_by_id(field_id)
-    if value == True:
-        button.click()
-    else:
-        logger.debug("Submit button not pressed by request.")
+    try:
+        button = webobj.find_element_by_id(field_id)
+        if value == True:
+            button.click()
+            logger.debug("Found and clicked button success.")
+        else:
+            logger.debug("Submit button not pressed by request.")
+    except NoSuchElementException as e:
+        logger.error(f"Didn't find {value} in {field_id}")
+        logger.error(f"{e}")
     return
 
 
@@ -72,126 +91,267 @@ def Pass_(value, field_id):
     pass
 
 
+ROUND_FIELD_VALUES = [
+    "1",
+    "2",
+    "3",
+    "Halftime",
+    "4",
+    "5",
+    "6",
+    "Final",
+    "Tiebreaker",
+]
+FLEXABLE_FIELD_INPUT = "any"  # Flag to indicate any reasonable text can be input.
+QUESTION = "question"
+POINTS = "points"
+ANSWER = "answer"
 WEBFORM = {
     "1": {
-        "team": {"fld": TeamNameBoxID, "func": Fill_a_field, 'valid_response': 'any'},
-        "round": {"fld": GameRoundBoxID, "func": Fill_a_dropdown, 'valid_response': ['1','2','3','Halftime','4','5','6','Final','Tiebreaker']},
-        "question": {"fld": GameQuestionBoxID, "func": Fill_a_dropdown, 'valid_response': ['1', '2', '3']},
-        "points": {"fld": FirstHalfPointBoxID, "func": Fill_a_dropdown, 'valid_response': ['2','4','6']},
-        "answer": {"fld": AnswerBoxID, "func": Fill_a_field, 'valid_response': 'any'},
-        "submit": {"fld": SubmitButtonID, "func": Click_a_button, 'valid_response': [True,False]},
+        TEAM_KEY: {FIELD_KEY: TeamNameBoxID, PROPER_FUNCTION: Fill_a_field, VALID_RESPONSES: FLEXABLE_FIELD_INPUT},
+        ROUND: {
+            FIELD_KEY: GameRoundBoxID,
+            PROPER_FUNCTION: Fill_a_dropdown,
+            VALID_RESPONSES: ROUND_FIELD_VALUES,
+        },
+        QUESTION: {
+            FIELD_KEY: GameQuestionBoxID,
+            PROPER_FUNCTION: Fill_a_dropdown,
+            VALID_RESPONSES: ["1", "2", "3"],
+        },
+        POINTS: {
+            FIELD_KEY: FirstHalfPointBoxID,
+            PROPER_FUNCTION: Fill_a_dropdown,
+            VALID_RESPONSES: ["2", "4", "6"],
+        },
+        ANSWER: {FIELD_KEY: AnswerBoxID, PROPER_FUNCTION: Fill_a_field, VALID_RESPONSES: FLEXABLE_FIELD_INPUT},
+        SUBMIT: {
+            FIELD_KEY: SubmitButtonID,
+            PROPER_FUNCTION: Click_a_button,
+            VALID_RESPONSES: [True, False],
+        },
     },
     "2": {
-        "team": {"fld": TeamNameBoxID, "func": Fill_a_field, 'valid_response': 'any'},
-        "round": {"fld": GameRoundBoxID, "func": Fill_a_dropdown, 'valid_response': ['1','2','3','Halftime','4','5','6','Final','Tiebreaker']},
-        "question": {"fld": GameQuestionBoxID, "func": Fill_a_dropdown, 'valid_response': ['1', '2', '3']},
-        "points": {"fld": FirstHalfPointBoxID, "func": Fill_a_dropdown, 'valid_response': ['2','4','6']},
-        "answer": {"fld": AnswerBoxID, "func": Fill_a_field, 'valid_response': 'any'},
-        "submit": {"fld": SubmitButtonID, "func": Click_a_button, 'valid_response': [True,False]},
+        TEAM_KEY: {FIELD_KEY: TeamNameBoxID, PROPER_FUNCTION: Fill_a_field, VALID_RESPONSES: FLEXABLE_FIELD_INPUT},
+        ROUND: {
+            FIELD_KEY: GameRoundBoxID,
+            PROPER_FUNCTION: Fill_a_dropdown,
+            VALID_RESPONSES: ROUND_FIELD_VALUES,
+        },
+        QUESTION: {
+            FIELD_KEY: GameQuestionBoxID,
+            PROPER_FUNCTION: Fill_a_dropdown,
+            VALID_RESPONSES: ["1", "2", "3"],
+        },
+        POINTS: {
+            FIELD_KEY: FirstHalfPointBoxID,
+            PROPER_FUNCTION: Fill_a_dropdown,
+            VALID_RESPONSES: ["2", "4", "6"],
+        },
+        ANSWER: {FIELD_KEY: AnswerBoxID, PROPER_FUNCTION: Fill_a_field, VALID_RESPONSES: FLEXABLE_FIELD_INPUT},
+        SUBMIT: {
+            FIELD_KEY: SubmitButtonID,
+            PROPER_FUNCTION: Click_a_button,
+            VALID_RESPONSES: [True, False],
+        },
     },
     "3": {
-        "team": {"fld": TeamNameBoxID, "func": Fill_a_field, 'valid_response': 'any'},
-        "round": {"fld": GameRoundBoxID, "func": Fill_a_dropdown, 'valid_response': ['1','2','3','Halftime','4','5','6','Final','Tiebreaker']},
-        "question": {"fld": GameQuestionBoxID, "func": Fill_a_dropdown, 'valid_response': ['1', '2', '3']},
-        "points": {"fld": FirstHalfPointBoxID, "func": Fill_a_dropdown, 'valid_response': ['2','4','6']},
-        "answer": {"fld": AnswerBoxID, "func": Fill_a_field, 'valid_response': 'any'},
-        "submit": {"fld": SubmitButtonID, "func": Click_a_button, 'valid_response': [True,False]},
+        TEAM_KEY: {FIELD_KEY: TeamNameBoxID, PROPER_FUNCTION: Fill_a_field, VALID_RESPONSES: FLEXABLE_FIELD_INPUT},
+        ROUND: {
+            FIELD_KEY: GameRoundBoxID,
+            PROPER_FUNCTION: Fill_a_dropdown,
+            VALID_RESPONSES: ROUND_FIELD_VALUES,
+        },
+        QUESTION: {
+            FIELD_KEY: GameQuestionBoxID,
+            PROPER_FUNCTION: Fill_a_dropdown,
+            VALID_RESPONSES: ["1", "2", "3"],
+        },
+        POINTS: {
+            FIELD_KEY: FirstHalfPointBoxID,
+            PROPER_FUNCTION: Fill_a_dropdown,
+            VALID_RESPONSES: ["2", "4", "6"],
+        },
+        ANSWER: {FIELD_KEY: AnswerBoxID, PROPER_FUNCTION: Fill_a_field, VALID_RESPONSES: FLEXABLE_FIELD_INPUT},
+        SUBMIT: {
+            FIELD_KEY: SubmitButtonID,
+            PROPER_FUNCTION: Click_a_button,
+            VALID_RESPONSES: [True, False],
+        },
     },
     "Halftime": {
-        "team": {"fld": TeamNameBoxID, "func": Fill_a_field, 'valid_response': 'any'},
-        "round": {"fld": GameRoundBoxID, "func": Fill_a_dropdown, 'valid_response': ['1','2','3','Halftime','4','5','6','Final','Tiebreaker']},
-        "question": {"fld": GameQuestionBoxID, "func": Fill_a_dropdown, 'valid_response': []},
-        "points": {"fld": FirstHalfPointBoxID, "func": Fill_a_dropdown, 'valid_response': []},
-        "answer": {"fld": HalftimeAndFinalAnswerBoxIDs, "func": Fill_four_answers, 'valid_response': 'any'},
-        "submit": {"fld": SubmitButtonID, "func": Click_a_button, 'valid_response': [True,False]},
+        TEAM_KEY: {FIELD_KEY: TeamNameBoxID, PROPER_FUNCTION: Fill_a_field, VALID_RESPONSES: FLEXABLE_FIELD_INPUT},
+        ROUND: {
+            FIELD_KEY: GameRoundBoxID,
+            PROPER_FUNCTION: Fill_a_dropdown,
+            VALID_RESPONSES: ROUND_FIELD_VALUES,
+        },
+        QUESTION: {
+            FIELD_KEY: GameQuestionBoxID,
+            PROPER_FUNCTION: Fill_a_dropdown,
+            VALID_RESPONSES: [],
+        },
+        POINTS: {
+            FIELD_KEY: FirstHalfPointBoxID,
+            PROPER_FUNCTION: Fill_a_dropdown,
+            VALID_RESPONSES: [],
+        },
+        ANSWER: {
+            FIELD_KEY: HalftimeAndFinalAnswerBoxIDs,
+            PROPER_FUNCTION: Fill_four_answers,
+            VALID_RESPONSES: FLEXABLE_FIELD_INPUT,
+        },
+        SUBMIT: {
+            FIELD_KEY: SubmitButtonID,
+            PROPER_FUNCTION: Click_a_button,
+            VALID_RESPONSES: [True, False],
+        },
     },
     "4": {
-        "team": {"fld": TeamNameBoxID, "func": Fill_a_field, 'valid_response': 'any'},
-        "round": {"fld": GameRoundBoxID, "func": Fill_a_dropdown, 'valid_response': ['1','2','3','Halftime','4','5','6','Final','Tiebreaker']},
-        "question": {"fld": GameQuestionBoxID, "func": Fill_a_dropdown, 'valid_response': ['1', '2', '3']},
-        "points": {"fld": SecondHalfPointBoxID, "func": Fill_a_dropdown, 'valid_response': ['5','7','9']},
-        "answer": {"fld": AnswerBoxID, "func": Fill_a_field, 'valid_response': 'any'},
-        "submit": {"fld": SubmitButtonID, "func": Click_a_button, 'valid_response': [True,False]},
+        TEAM_KEY: {FIELD_KEY: TeamNameBoxID, PROPER_FUNCTION: Fill_a_field, VALID_RESPONSES: FLEXABLE_FIELD_INPUT},
+        ROUND: {
+            FIELD_KEY: GameRoundBoxID,
+            PROPER_FUNCTION: Fill_a_dropdown,
+            VALID_RESPONSES: ROUND_FIELD_VALUES,
+        },
+        QUESTION: {
+            FIELD_KEY: GameQuestionBoxID,
+            PROPER_FUNCTION: Fill_a_dropdown,
+            VALID_RESPONSES: ["1", "2", "3"],
+        },
+        POINTS: {
+            FIELD_KEY: SecondHalfPointBoxID,
+            PROPER_FUNCTION: Fill_a_dropdown,
+            VALID_RESPONSES: ["5", "7", "9"],
+        },
+        ANSWER: {FIELD_KEY: AnswerBoxID, PROPER_FUNCTION: Fill_a_field, VALID_RESPONSES: FLEXABLE_FIELD_INPUT},
+        SUBMIT: {
+            FIELD_KEY: SubmitButtonID,
+            PROPER_FUNCTION: Click_a_button,
+            VALID_RESPONSES: [True, False],
+        },
     },
     "5": {
-        "team": {"fld": TeamNameBoxID, "func": Fill_a_field, 'valid_response': 'any'},
-        "round": {"fld": GameRoundBoxID, "func": Fill_a_dropdown, 'valid_response': ['1','2','3','Halftime','4','5','6','Final','Tiebreaker']},
-        "question": {"fld": GameQuestionBoxID, "func": Fill_a_dropdown, 'valid_response': ['1', '2', '3']},
-        "points": {"fld": SecondHalfPointBoxID, "func": Fill_a_dropdown, 'valid_response': ['5','7','9']},
-        "answer": {"fld": AnswerBoxID, "func": Fill_a_field, 'valid_response': 'any'},
-        "submit": {"fld": SubmitButtonID, "func": Click_a_button, 'valid_response': [True,False]},
+        TEAM_KEY: {FIELD_KEY: TeamNameBoxID, PROPER_FUNCTION: Fill_a_field, VALID_RESPONSES: FLEXABLE_FIELD_INPUT},
+        ROUND: {
+            FIELD_KEY: GameRoundBoxID,
+            PROPER_FUNCTION: Fill_a_dropdown,
+            VALID_RESPONSES: ROUND_FIELD_VALUES,
+        },
+        QUESTION: {
+            FIELD_KEY: GameQuestionBoxID,
+            PROPER_FUNCTION: Fill_a_dropdown,
+            VALID_RESPONSES: ["1", "2", "3"],
+        },
+        POINTS: {
+            FIELD_KEY: SecondHalfPointBoxID,
+            PROPER_FUNCTION: Fill_a_dropdown,
+            VALID_RESPONSES: ["5", "7", "9"],
+        },
+        ANSWER: {FIELD_KEY: AnswerBoxID, PROPER_FUNCTION: Fill_a_field, VALID_RESPONSES: FLEXABLE_FIELD_INPUT},
+        SUBMIT: {
+            FIELD_KEY: SubmitButtonID,
+            PROPER_FUNCTION: Click_a_button,
+            VALID_RESPONSES: [True, False],
+        },
     },
     "6": {
-        "team": {"fld": TeamNameBoxID, "func": Fill_a_field, 'valid_response': 'any'},
-        "round": {"fld": GameRoundBoxID, "func": Fill_a_dropdown, 'valid_response': ['1','2','3','Halftime','4','5','6','Final','Tiebreaker']},
-        "question": {"fld": GameQuestionBoxID, "func": Fill_a_dropdown, 'valid_response': ['1', '2', '3']},
-        "points": {"fld": SecondHalfPointBoxID, "func": Fill_a_dropdown, 'valid_response': ['5','7','9']},
-        "answer": {"fld": AnswerBoxID, "func": Fill_a_field, 'valid_response': 'any'},
-        "submit": {"fld": SubmitButtonID, "func": Click_a_button, 'valid_response': [True,False]},
+        TEAM_KEY: {FIELD_KEY: TeamNameBoxID, PROPER_FUNCTION: Fill_a_field, VALID_RESPONSES: FLEXABLE_FIELD_INPUT},
+        ROUND: {
+            FIELD_KEY: GameRoundBoxID,
+            PROPER_FUNCTION: Fill_a_dropdown,
+            VALID_RESPONSES: ROUND_FIELD_VALUES,
+        },
+        QUESTION: {
+            FIELD_KEY: GameQuestionBoxID,
+            PROPER_FUNCTION: Fill_a_dropdown,
+            VALID_RESPONSES: ["1", "2", "3"],
+        },
+        POINTS: {
+            FIELD_KEY: SecondHalfPointBoxID,
+            PROPER_FUNCTION: Fill_a_dropdown,
+            VALID_RESPONSES: ["5", "7", "9"],
+        },
+        ANSWER: {FIELD_KEY: AnswerBoxID, PROPER_FUNCTION: Fill_a_field, VALID_RESPONSES: FLEXABLE_FIELD_INPUT},
+        SUBMIT: {
+            FIELD_KEY: SubmitButtonID,
+            PROPER_FUNCTION: Click_a_button,
+            VALID_RESPONSES: [True, False],
+        },
     },
     "Final": {
-        "team": {"fld": TeamNameBoxID, "func": Fill_a_field, 'valid_response': 'any'},
-        "round": {"fld": GameRoundBoxID, "func": Fill_a_dropdown, 'valid_response': ['1','2','3','Halftime','4','5','6','Final','Tiebreaker']},
-        "question": {"fld": GameQuestionBoxID, "func": Fill_a_dropdown, 'valid_response': []},
-        "points": {"fld": FinalQuestionWagerID, "func": Fill_a_field, 'valid_response': ['0','1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20']},
-        "answer": {"fld": HalftimeAndFinalAnswerBoxIDs, "func": Fill_four_answers, 'valid_response': 'any'},
-        "submit": {"fld": SubmitButtonID, "func": Click_a_button, 'valid_response': [True,False]},
+        TEAM_KEY: {FIELD_KEY: TeamNameBoxID, PROPER_FUNCTION: Fill_a_field, VALID_RESPONSES: FLEXABLE_FIELD_INPUT},
+        ROUND: {
+            FIELD_KEY: GameRoundBoxID,
+            PROPER_FUNCTION: Fill_a_dropdown,
+            VALID_RESPONSES: ROUND_FIELD_VALUES,
+        },
+        QUESTION: {
+            FIELD_KEY: GameQuestionBoxID,
+            PROPER_FUNCTION: Fill_a_dropdown,
+            VALID_RESPONSES: [],
+        },
+        POINTS: {
+            FIELD_KEY: FinalQuestionWagerID,
+            PROPER_FUNCTION: Fill_a_field,
+            VALID_RESPONSES: [
+                "0",
+                "1",
+                "2",
+                "3",
+                "4",
+                "5",
+                "6",
+                "7",
+                "8",
+                "9",
+                "10",
+                "11",
+                "12",
+                "13",
+                "14",
+                "15",
+                "16",
+                "17",
+                "18",
+                "19",
+                "20",
+            ],
+        },
+        ANSWER: {
+            FIELD_KEY: HalftimeAndFinalAnswerBoxIDs,
+            PROPER_FUNCTION: Fill_four_answers,
+            VALID_RESPONSES: FLEXABLE_FIELD_INPUT,
+        },
+        SUBMIT: {
+            FIELD_KEY: SubmitButtonID,
+            PROPER_FUNCTION: Click_a_button,
+            VALID_RESPONSES: [True, False],
+        },
     },
     "Tiebreaker": {
-        "team": {"fld": TeamNameBoxID, "func": Fill_a_field, 'valid_response': 'any'},
-        "round": {"fld": GameRoundBoxID, "func": Fill_a_dropdown, 'valid_response': ['1','2','3','Halftime','4','5','6','Final','Tiebreaker']},
-        "question": {"fld": GameQuestionBoxID, "func": Fill_a_dropdown, 'valid_response': []},
-        "points": {"fld": FirstHalfPointBoxID, "func": Fill_a_dropdown, 'valid_response': []},
-        "answer": {"fld": AnswerBoxID, "func": Fill_a_field, 'valid_response': 'any'},
-        "submit": {"fld": SubmitButtonID, "func": Click_a_button, 'valid_response': [True,False]},
-    },
-}
-
-sample_answers = {
-    "1": {
-        "team": "FirstRound",
-        "round": "1",
-        "question": "2",
-        "points": "6",
-        "answer": "First round answer",
-        "submit": SENDFORM,
-    },
-    "halftime": {
-        "team": "Halftime Round",
-        "round": "Halftime",
-        "answer": [
-            "alpha",
-            "beta",
-            "delta",
-            "gamma",
-        ],
-        "submit": SENDFORM,
-    },
-    "4": {
-        "team": "Second Round",
-        "round": "4",
-        "question": "2",
-        "points": "9",
-        "answer": "second round answer",
-        "submit": SENDFORM,
-    },
-    "final": {
-        "team": "Final Questions",
-        "round": "Final",
-        "answer": [
-            "alpha",
-            "beta",
-            "delta",
-            "gamma",
-        ],
-        "points": "20",
-        "submit": SENDFORM,
-    },
-    "tiebreaker": {
-        "team": "Tiebreaker round",
-        "round": "Tiebreaker",
-        "answer": "The final decision (no points)",
-        "submit": SENDFORM,
+        TEAM_KEY: {FIELD_KEY: TeamNameBoxID, PROPER_FUNCTION: Fill_a_field, VALID_RESPONSES: FLEXABLE_FIELD_INPUT},
+        ROUND: {
+            FIELD_KEY: GameRoundBoxID,
+            PROPER_FUNCTION: Fill_a_dropdown,
+            VALID_RESPONSES: ROUND_FIELD_VALUES,
+        },
+        QUESTION: {
+            FIELD_KEY: GameQuestionBoxID,
+            PROPER_FUNCTION: Fill_a_dropdown,
+            VALID_RESPONSES: [],
+        },
+        POINTS: {
+            FIELD_KEY: FirstHalfPointBoxID,
+            PROPER_FUNCTION: Fill_a_dropdown,
+            VALID_RESPONSES: [],
+        },
+        ANSWER: {FIELD_KEY: AnswerBoxID, PROPER_FUNCTION: Fill_a_field, VALID_RESPONSES: FLEXABLE_FIELD_INPUT},
+        SUBMIT: {
+            FIELD_KEY: SubmitButtonID,
+            PROPER_FUNCTION: Click_a_button,
+            VALID_RESPONSES: [True, False],
+        },
     },
 }
 
@@ -205,69 +365,130 @@ def Fill_and_submit_trivia_form(data, Send=False):
     the box 'field label' and 'answer text' for each of the four answers.
     Tiebrasker round is different in that it only has an answer and no points field.
     Example data dictionary:
-    {   "team": "My Team Name",
-        "round": "1",  # values are 1-6, Halftime, Final, Tiebreaker
-        "question": "2",  # values are 1-3
-        "points": "6",  # firstround is 2,4,6  secondround is 5,7,9
-        "answer": "Place your answer here",
-        "submit": True,}  # use False for testing.
+    {   TEAM: "My Team Name",
+        ROUND: "1",  # values are 1-6, Halftime, Final, Tiebreaker
+        QUESTION: "2",  # values are 1-3
+        POINTS: "6",  # firstround is 2,4,6  secondround is 5,7,9
+        ANSWER: "Place your answer here",
+        SUBMIT: True,}  # use False for testing.
     """
     browser_token = webdriver.Chrome()
-    browser_token.get("https://form.jotform.com/202575177230149")
-    fields_and_functions = WEBFORM[data["round"]]
+    browser_token.implicitly_wait(10)
+    browser_token.get(THE_JOTFORM_URL)
+    fields_and_functions = WEBFORM[data[ROUND]]
     logger.debug(fields_and_functions)
     logger.debug("...")
     logger.debug(data)
     # fill the 'Round' value on the form first.
-    Round = data.pop("round")
-    Submit = data.pop('submit')
-    legal_values = fields_and_functions['round']['valid_response']
-    if Round in legal_values:
-        logger.debug('Ready to set the round field of form.')
-        fields_and_functions["round"]["func"](
-            browser_token, Round, fields_and_functions["round"]["fld"]
+    Round = data.pop(ROUND)
+    Submit = data.pop(SUBMIT)
+    legal_responses = fields_and_functions[ROUND][VALID_RESPONSES]
+    if Round in legal_responses:
+        logger.debug("Ready to set the round field of form.")
+        fields_and_functions[ROUND][PROPER_FUNCTION](
+            browser_token, Round, fields_and_functions[ROUND][FIELD_KEY]
         )
-        logger.debug('Round set.')
+        logger.debug("Round set.")
+        sleep(0.5)  # pause to allow page to re-set after round is chosen.
     else:
-        logger.error(f'Round: {Round} not found in {legal_values}')
-        return f'Acceptable Round values are {legal_values}'
+        logger.error(f"Round: {Round} not found in {legal_responses}")
+        return f"Acceptable Round values are {legal_responses}"
     # form is now initialized to accept the correct data
     valid_fields = fields_and_functions.keys()
-    for field, value in data.items():
-        if field in valid_fields:        
-            legal_values = fields_and_functions[field]['valid_response']
+    for current_field, value in data.items():
+        if current_field in valid_fields:
+            legal_responses = fields_and_functions[current_field][VALID_RESPONSES]
             # TODO validate that the value is acceptable for the field it is being offered.
             # if value_is_acceptable(value, legal_values):
             # proceede
             # else log error
-            logger.debug(f"Field: {field} Value: {value} Acceptable responses: {legal_values}")
-            fields_and_functions[field]["func"](
-                browser_token, value, fields_and_functions[field]["fld"]
+            logger.debug(
+                f"Field: {current_field} Value: {value} Acceptable responses: {legal_responses}"
+            )
+            fields_and_functions[current_field][PROPER_FUNCTION](
+                browser_token, value, fields_and_functions[current_field][FIELD_KEY]
             )
             # TODO error check the browser form
-            logger.debug('Field filled.')
+            logger.debug("Field filled.")
         else:
-            logger.error(f'Field: {field} not found in: {valid_fields}')
-            return f'Input Field: {field} not found in {valid_fields}'
+            logger.error(f"Field: {current_field} not found in: {valid_fields}")
+            return f"Input Field: {current_field} not found in {valid_fields}"
     # Now submit the form if True
-    logger.debug('Ready to submit form.')
-    legal_values = fields_and_functions['submit']['valid_response']
-    if Submit in legal_values:
-        fields_and_functions["submit"]["func"](
-            browser_token, Submit, fields_and_functions["submit"]["fld"]
+    logger.debug("Ready to submit form.")
+    legal_responses = fields_and_functions[SUBMIT][VALID_RESPONSES]
+    if Submit in legal_responses:
+        fields_and_functions[SUBMIT][PROPER_FUNCTION](
+            browser_token, Submit, fields_and_functions[SUBMIT][FIELD_KEY]
         )
     else:
-        logger.error(f'Submit failed. Value: {Submit} not in {legal_values}')
-        return 'Submit of form failed.'
-    sleep(.5)
+        logger.error(f"Submit failed. Value: {Submit} not in {legal_responses}")
+        return "Submit of form failed."
+    sleep(0.5)
     browser_token.close()
-    data['submit'] = Submit  # place submit field back into dictionary
-    data['round'] = Round  # place round entry back into dictionary
+    data[SUBMIT] = Submit  # place submit field back into dictionary
+    data[ROUND] = Round  # place round entry back into dictionary
     return f"Trivia form sent:\n{pprint_dicts(data)}"
 
 
 @logger.catch
 def main():
+    # setup some sample answers for testing
+    sample_answers = {
+        "1": {
+            TEAM_KEY: "FirstRound",
+            ROUND: "1",
+            QUESTION: "2",
+            POINTS: "6",
+            ANSWER: "First round answer",
+            SUBMIT: SENDFORM,
+        },
+        "halftime": {
+            TEAM_KEY: "Halftime Round",
+            ROUND: "Halftime",
+            ANSWER: [
+                "alpha",
+                "beta",
+                "delta",
+                "gamma",
+            ],
+            SUBMIT: SENDFORM,
+        },
+        "4": {
+            TEAM_KEY: "Second Round",
+            ROUND: "4",
+            QUESTION: "2",
+            POINTS: "9",
+            ANSWER: "second round answer",
+            SUBMIT: SENDFORM,
+        },
+        "final": {
+            TEAM_KEY: "Final Questions",
+            ROUND: "Final",
+            ANSWER: [
+                "alpha",
+                "beta",
+                "delta",
+                "gamma",
+            ],
+            POINTS: "20",
+            SUBMIT: SENDFORM,
+        },
+        "tiebreaker": {
+            TEAM_KEY: "Tiebreaker round",
+            ROUND: "Tiebreaker",
+            ANSWER: "The final decision (no points)",
+            SUBMIT: SENDFORM,
+        },
+        "6": {
+            TEAM_KEY: "Second Round",
+            ROUND: "6",
+            QUESTION: "2",
+            POINTS: "2",  # this is an error. 2 is not valid in round 6
+            ANSWER: "second round answer",
+            SUBMIT: SENDFORM,
+        },
+    }
+
     for k, sampleform in sample_answers.items():
         Fill_and_submit_trivia_form(sample_answers[k], Send=False)
     sleep(1)
