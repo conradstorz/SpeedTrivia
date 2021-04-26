@@ -52,20 +52,6 @@ CRAZY FUTURE FUNCTIONALITY:
     Deployment to production can then point Twilio back to Conradical.pythonAnywhere.com 
     
 """
-HELPFUL_INFO = """Welcome to SpeedTrivia. SpeedTrivia is designed to be a tool that
-matches players with other players randomly. If you brought a favorite player with you
-then simply reply to this number with the keyword 'plus'. You can add as many
-seats as you need. Thanks for attending!
-"""
-TIME_INFO = """Trivia at Mac's Hideaway is Tuesday nights 
-starting promptly at 7pm and runs 2 hours. """
-WEBFORM_HELP = (
-    """The website for entering your answers is: tinyurl.com/cemacshideaway"""
-)
-MOST_COMMON_HELP = """Common commands are add/remove plus ones. 
-"Minus 1" removes 1. 
-"Plus 2" adds 2 extra players.
-"Status" tells you how many plus ones you have."""
 
 import os
 import sys
@@ -87,14 +73,9 @@ nltk.download("stopwords")
 nltk.download("averaged_perceptron_tagger")
 from nltk.corpus import stopwords
 from collections import defaultdict
-from loguru import logger
 import random
-from ST_database_definition import *
 
-FILENAME = __file__
-FILENAME_PATHOBJ = Path(__file__)
-PROGRAM_START_TIME = dt.datetime.now(pytz.timezone("UTC"))
-
+from ST_common import *
 
 def ProperNounExtractor(text):
     # if text is only a single word, like 'Doug', this routine does not identify it as a name.
@@ -116,11 +97,6 @@ def how_long_ago_is(past_time):
     return days_
 
 
-TWILLIO_SMS_NUMBER = "+18122038235"  # Paoli native number bought from Twilio
-DATABASE_PATHOBJ = Path(f"{FILENAME}.db")
-TABLESIZE = 3
-CONTROLLER = "+18125577095"
-FROZEN = False
 tables = (
     list()
 )  # A global list of table labels that is defined within the 'ShuffleTables' function
@@ -435,69 +411,9 @@ def Send_players_list(msid, sms_from, body_of_sms):
         player_list.append(f"{players_database[player][CALLERNAME]} with {players_database[player][PLUS_ONES]} extras. ")
     # this .join is the best approach to combine all the strings in the list.
     message = "".join(player_list)
-    Send_SMS(message, CONTROLLER)
+    # Send_SMS(message, CONTROLLER)
     logger.debug(message)
-
-
-COMMANDS = {
-    "Commands": ReturnCommandList,  # return this list of keys.
-    "Webform": Send_Webform_help,  # provide a clickable link to the webform.
-    "Common": Send_common_commands_help,  # provide help using most common commands.
-    "Minus": RemoveReservation,  # remove a +1 from the caller's table.
-    "Table": ReturnTableName,  # return callers table name.
-    "Status": ReturnStatus,  # return caller status info.
-    "Plus": AddReservation,  # add another +1 to the caller's table.
-    "Funny": SuggestFunny,  # return a random "funny" team name from a list.
-    "Serious": SuggestSerious,  # return a "serious" team name.
-    "ChangeName": ChangePlayerName,  # delete the player name and ask for a new one.
-    "ChangeTeam": SetTeamName,  # delete the team name and ask for a new one.
-    "time": ReturnHelpInfo,  # return the HELP file with info on start time of game.
-    "Helpme": ReturnHelpInfo,  # return the HELP file with info on using the app.
-    "Shuffle": ShuffleTables,  # CONTROLLER ONLY: re-shuffle table assignments.
-    "Start": StartGame,  # CONTROLLER ONLY: Lock-in the table assignments for thid game night.
-    "Size": ChangeTeamSize,  # CONTROLLER ONLY: Change the number of players per table.
-    "Announcement": Send_Announcement,  # CONTROLLER ONLY: Make a SMS note to all registered players.
-    "PlayersList": Send_players_list,  # CONTROLLER ONLY: Return a list of ALL players to CONTROLLER.
-}
-CONTROLLER_ONLY_COMMANDS = [
-    "Announcement",
-    "Players-list",
-    "Shuffle",
-    "Start",
-    "Size",
-]
-
-# Save a dictionary into a pickle file.
-import pickle  # TODO put all of pickle code into seperate .py file and import
-                # export commands GetDB() and PutDB()
-
-if DATABASE_PATHOBJ.exists():
-    logger.info("Recovering pickle database...")
-    players_database = pickle.load(open(DATABASE_PATHOBJ, "rb"))
-else:
-    logger.info("Creating new pickle database...")
-    pickle.dump(players_database, open(DATABASE_PATHOBJ, "wb"))
-
-
-# Twilio token setup: 
-# TODO move all Twilio app support to external .py file
-# export commands GetClientID() and Send_SMS()
-CLIENT = None
-if not os.system("set ACCOUNT_SID"):  # are these return values inverted?
-    logger.info("Twilio ACCOUNT_SID found.")
-    if not os.system(
-        "set AUTH_TOKEN"
-    ):  # seems like they would be true if the value exists.
-        logger.info("Twilio AUTH_TOKEN found, registering Twilio Client...")
-        ACCOUNT_SID = os.environ.get("ACCOUNT_SID")
-        AUTH_TOKEN = os.environ.get("AUTH_TOKEN")
-        CLIENT = Client(ACCOUNT_SID, AUTH_TOKEN)
-        logger.info("Client token created:")
-        logger.info(CLIENT)
-if CLIENT == None:
-    print("Client token not set. Did you load the environment variables?")
-    print("Did you re-start VScode?")
-    sys.exit(1)
+    return message
 
 @logger.catch
 def Send_SMS(text, receipient):
@@ -518,22 +434,26 @@ def Respond_to(msid, sms_from, body_of_sms):
     Returns:
         str: The string sent back to the caller.
     """
-    # TODO stream-line the logic
     response = update_caller_database(msid, sms_from, body_of_sms)
     if response == "Hello! I don't have your number in my records. Could you please tell me your name?":
         return response
     logger.info(pprint_dicts(players_database[sms_from]))
-    # This is a registerd caller. Check SMS for a command
     cmnds = COMMANDS.keys()
+    logger.info(cmnds)
     for word in cmnds:
-        # look for command word as the first part of the message
         command_slice = str(body_of_sms).lower()[:len(word)]
         logger.debug(f'SMS slice from front of text: {command_slice}')
         if word.lower() == command_slice:
+            # TODO Ensure that only whole words are matched.
+            # search = word.lower()
+            # strn = str(body_of_sms).lower()
+            # matches = re.findall(r"\b" + search + r"\b", strn)
+            # matches is a list of each match.
             logger.info(f"Found command: {word}")
             # slice off command from front of string
             action_value = body_of_sms[len(word):]
-            logger.info(f"Command action value is: {action_value}")
+            logger.debug(f"Command action value is: {action_value}")
+            logger.debug(f'Attempting to call function: {COMMANDS[word]}')
             if word in CONTROLLER_ONLY_COMMANDS:
                 if sms_from == CONTROLLER:
                     response = COMMANDS[word](msid, sms_from, action_value)
@@ -598,45 +518,104 @@ def check_sms_for_name(msid, sms_from, body_of_sms):
     return f"Thanks {callername}! Glad to meet you. Welcome to SpeedTrivia."
 
 
-Send_SMS("SpeedTrivia program start.", CONTROLLER)
-
-logger.info("Instantiating Flask App:")
-SpeedTriviaApp = Flask(__name__)
-logger.info(SpeedTriviaApp)
-
-
-@SpeedTriviaApp.route("/sms", methods=["GET", "POST"])
-def sms_reply():
-    """Respond to incoming calls routed from Twilio through Flask to here.
-    This is the entrypoint for SpeedTrivia functionality.
-    """
-    # log this number to track memory useage and monitor for memory leaks.
-    memory_footprint = sys.getallocatedblocks()
-    logger.debug(f"Running program footprint is: {memory_footprint}")
-    logger.info("Message received:")
-    sms_body = request.values.get("Body", None)
-    sms_from = request.values.get("From", None)
-    sms_MSID = request.values.get("MessageSid", None)
-    logger.info(sms_MSID)
-    logger.info(sms_from)
-    logger.info(sms_body)
-    # Generate an appropriate response (if any)
-    reply = Respond_to(sms_MSID, sms_from, sms_body)
-    if reply == "":
-        logger.info("No response needed.")
-        reply = "Message received"
-    else:
-        logger.info(reply)
-    Send_SMS(reply, sms_from)
-    logger.info("Updating database...")
-    pickle.dump(players_database, open(DATABASE_PATHOBJ, "wb"))
-    logger.info("Returning control to Flask.")
-    return reply
-
-
 if __name__ == "__main__":
     try:
         logger.info("Program is being run as __main__")
+
+        COMMANDS = {
+            "Commands": ReturnCommandList,  # return this list of keys.
+            "Webform": Send_Webform_help,  # provide a clickable link to the webform.
+            "Common": Send_common_commands_help,  # provide help using most common commands.
+            "Minus": RemoveReservation,  # remove a +1 from the caller's table.
+            "Table": ReturnTableName,  # return callers table name.
+            "Status": ReturnStatus,  # return caller status info.
+            "Plus": AddReservation,  # add another +1 to the caller's table.
+            "Funny": SuggestFunny,  # return a random "funny" team name from a list.
+            "Serious": SuggestSerious,  # return a "serious" team name.
+            "ChangeName": ChangePlayerName,  # delete the player name and ask for a new one.
+            "ChangeTeam": SetTeamName,  # delete the team name and ask for a new one.
+            "time": ReturnHelpInfo,  # return the HELP file with info on start time of game.
+            "Helpme": ReturnHelpInfo,  # return the HELP file with info on using the app.
+            "Shuffle": ShuffleTables,  # CONTROLLER ONLY: re-shuffle table assignments.
+            "Start": StartGame,  # CONTROLLER ONLY: Lock-in the table assignments for thid game night.
+            "Size": ChangeTeamSize,  # CONTROLLER ONLY: Change the number of players per table.
+            "Announcement": Send_Announcement,  # CONTROLLER ONLY: Make a SMS note to all registered players.
+            "PlayersList": Send_players_list,  # CONTROLLER ONLY: Return a list of ALL players to CONTROLLER.
+        }
+        CONTROLLER_ONLY_COMMANDS = [
+            "Announcement",
+            "PlayersList",
+            "Shuffle",
+            "Start",
+            "Size",
+        ]
+
+        # Twilio token setup: 
+        # TODO move all Twilio app support to external .py file
+        # export commands GetClientID() and Send_SMS()
+        CLIENT = None
+        if not os.system("set ACCOUNT_SID"):  # are these return values inverted?
+            logger.info("Twilio ACCOUNT_SID found.")
+            if not os.system(
+                "set AUTH_TOKEN"
+            ):  # seems like they would be true if the value exists.
+                logger.info("Twilio AUTH_TOKEN found, registering Twilio Client...")
+                ACCOUNT_SID = os.environ.get("ACCOUNT_SID")
+                AUTH_TOKEN = os.environ.get("AUTH_TOKEN")
+                CLIENT = Client(ACCOUNT_SID, AUTH_TOKEN)
+                logger.info("Client token created:")
+                logger.info(CLIENT)
+        if CLIENT == None:
+            print("Client token not set. Did you load the environment variables?")
+            print("Did you re-start VScode?")
+            sys.exit(1)
+            
+        Send_SMS("SpeedTrivia program start.", CONTROLLER)
+
+        # Save a dictionary into a pickle file.
+        import pickle  # TODO put all of pickle code into seperate .py file and import
+                        # export commands GetDB() and PutDB()
+        if DATABASE_PATHOBJ.exists():
+            logger.info("Recovering pickle database...")
+            players_database = pickle.load(open(DATABASE_PATHOBJ, "rb"))
+        else:
+            logger.info("Creating new pickle database...")
+            pickle.dump(players_database, open(DATABASE_PATHOBJ, "wb"))
+
+        logger.info("Instantiating Flask App:")
+        SpeedTriviaApp = Flask(__name__)
+        logger.info(SpeedTriviaApp)
+
+        @SpeedTriviaApp.route("/sms", methods=["GET", "POST"])
+        def sms_reply():
+            """Respond to incoming calls.
+            This is the entrypoint for SpeedTrivia functionality.
+            """
+            # log this number to track memory useage and monitor for memory leaks.
+            memory_footprint = sys.getallocatedblocks()
+            logger.debug(f"Running program footprint is: {memory_footprint}")
+            logger.info("Message received:")
+            sms_body = request.values.get("Body", None)
+            sms_from = request.values.get("From", None)
+            sms_MSID = request.values.get("MessageSid", None)
+            logger.info(sms_MSID)
+            logger.info(sms_from)
+            logger.info(sms_body)
+            # Generate an appropriate response (if any)
+            reply = Respond_to(sms_MSID, sms_from, sms_body)
+            if reply == "":
+                logger.info("No response needed.")
+                reply = "Thank you."
+            elif reply == None:
+                logger.error(f'Respond_to function returned "None".')
+                reply = "Unknown system error. Please try again."
+            Send_SMS(reply, sms_from)
+            logger.info("Updating database...")
+            pickle.dump(players_database, open(DATABASE_PATHOBJ, "wb"))
+            logger.info("Returning control to Flask.")
+            return reply
+
+        # Hand control to Flask
         SpeedTriviaApp.run()
         # Flask does not return here during exceptions or ctrl-c
         logger.info("Program ended nominally.")
