@@ -87,7 +87,9 @@ nltk.download("stopwords")
 nltk.download("averaged_perceptron_tagger")
 from nltk.corpus import stopwords
 from collections import defaultdict
+from loguru import logger
 import random
+from ST_database_definition import *
 
 FILENAME = __file__
 FILENAME_PATHOBJ = Path(__file__)
@@ -140,33 +142,6 @@ logger.add(
 # end logging setup
 logger.info("Program started.")
 
-# begin definition of default dict keys for players
-CALLERNAME = "Caller_name"
-FIRSTCALL = "First_call"
-RECENTCALL = "Recent_Call"
-PLUS_ONES = "Plus_one"
-PARTNER_HISTORY = "Partners_history"
-MESSAGE_HISTORY = "Message_history"
-CURRENT_TABLE_ASSIGNMENT = "Current_Table"
-CURRENT_TEAM_NAME = "Current_team"
-
-@logger.catch
-def dict_default():
-    sample_player_dict = {
-        CALLERNAME: "",
-        CURRENT_TABLE_ASSIGNMENT: "Undefined",
-        CURRENT_TEAM_NAME: "notset",
-        PLUS_ONES: int(0),  # represents number of extra seats reserved at the table
-        PARTNER_HISTORY: [],
-        MESSAGE_HISTORY: [],
-        FIRSTCALL: None,
-        RECENTCALL: None,
-    }
-    return sample_player_dict
-
-
-players_database = defaultdict(dict_default)
-players_database["root"] = "root"
 
 @logger.catch
 def ReturnCommandList(msid, sms_from, body_of_sms):
@@ -543,25 +518,22 @@ def Respond_to(msid, sms_from, body_of_sms):
     Returns:
         str: The string sent back to the caller.
     """
+    # TODO stream-line the logic
     response = update_caller_database(msid, sms_from, body_of_sms)
     if response == "Hello! I don't have your number in my records. Could you please tell me your name?":
         return response
     logger.info(pprint_dicts(players_database[sms_from]))
+    # This is a registerd caller. Check SMS for a command
     cmnds = COMMANDS.keys()
-    logger.info(cmnds)
     for word in cmnds:
+        # look for command word as the first part of the message
         command_slice = str(body_of_sms).lower()[:len(word)]
         logger.debug(f'SMS slice from front of text: {command_slice}')
         if word.lower() == command_slice:
-            # TODO Ensure that only whole words are matched.
-            # search = word.lower()
-            # strn = str(body_of_sms).lower()
-            # matches = re.findall(r"\b" + search + r"\b", strn)
-            # matches is a list of each match.
             logger.info(f"Found command: {word}")
             # slice off command from front of string
             action_value = body_of_sms[len(word):]
-            logger.debug(f"Command action value is: {action_value}")
+            logger.info(f"Command action value is: {action_value}")
             if word in CONTROLLER_ONLY_COMMANDS:
                 if sms_from == CONTROLLER:
                     response = COMMANDS[word](msid, sms_from, action_value)
@@ -635,7 +607,7 @@ logger.info(SpeedTriviaApp)
 
 @SpeedTriviaApp.route("/sms", methods=["GET", "POST"])
 def sms_reply():
-    """Respond to incoming calls.
+    """Respond to incoming calls routed from Twilio through Flask to here.
     This is the entrypoint for SpeedTrivia functionality.
     """
     # log this number to track memory useage and monitor for memory leaks.
@@ -652,6 +624,7 @@ def sms_reply():
     reply = Respond_to(sms_MSID, sms_from, sms_body)
     if reply == "":
         logger.info("No response needed.")
+        reply = "Message received"
     else:
         logger.info(reply)
     Send_SMS(reply, sms_from)
