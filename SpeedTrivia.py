@@ -481,10 +481,19 @@ def Respond_to(msid, sms_from, body_of_sms):
     else:
         logger.info("No command words found in this SMS.")
         logger.debug(f"Checking for a trivia answer form in SMS...")
-        response = Check_for_webform_answer_submission(
-            msid, sms_from, body_of_sms, players_database[sms_from][CURRENT_TEAM_NAME],
-            Send=True
+        if TESTING:
+            response = 'System under test.'
+            print(Check_for_webform_answer_submission(
+                msid, sms_from, body_of_sms, players_database[sms_from][CURRENT_TEAM_NAME],
+                Send=False
+                )
         )
+        else:
+            # TODO Ensure that the function below does not fail silently due to bad data in body_of_sms
+            response = Check_for_webform_answer_submission(
+                msid, sms_from, body_of_sms, players_database[sms_from][CURRENT_TEAM_NAME],
+                Send=True
+            )
     return response
 
 @logger.catch

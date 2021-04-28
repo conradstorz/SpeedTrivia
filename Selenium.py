@@ -343,6 +343,7 @@ WEBFORM = {
 
 
 def Fill_and_submit_trivia_form(data, Send=False):
+    # TODO ensure that this function does not fail silently by returning an empty string or None
     """Launch a browser and fill fields of webform then submit.
     The format of the 'data' variable varies based on the form to be filled.
     Round 1 and Round 2 forms are identical differing only in the 'field labels' in use.

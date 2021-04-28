@@ -17,6 +17,7 @@ def Check_for_webform_answer_submission(msid, sms_from, body_of_sms, teamname, S
     Returns:
         (string): Text message to be returned to sender by Twilio.
     """
+    result = 'Undefined webform submission error.'
     data = {}
     data["team"] = teamname
     data["submit"] = Send
