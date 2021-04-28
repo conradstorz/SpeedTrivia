@@ -4,6 +4,7 @@
 # Environments
 .env
 .venv
+st_venv
 env/
 venv/
 ENV/
@@ -134,3 +135,4 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+.vscode/settings.json
