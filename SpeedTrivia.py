@@ -195,7 +195,7 @@ def ReturnStatus(msid, sms_from, body_of_sms):
     logger.info("Send status to player function entered.")
     stat = f"{players_database[sms_from][CALLERNAME]} your team name is {players_database[sms_from][CURRENT_TEAM_NAME]} and your table name is {players_database[sms_from][CURRENT_TABLE_ASSIGNMENT]} and you have {players_database[sms_from][PLUS_ONES]} extra seats reserved."
     if sms_from == CONTROLLER:
-        stat = f"{stat} --status: {TABLESIZE} per table. {len(Tonights_players())} players registered for tonight. {tables}"
+        stat = f"{stat} --status: {TABLESIZE} per table. {len(Tonights_players())} players registered for tonight."
     return stat
 
 @logger.catch
@@ -425,6 +425,7 @@ def Send_players_list(msid, sms_from, body_of_sms):
     logger.debug(message)
     return message
 
+# TODO place this in a Twilio module so it can be used in Webform_filler.py as well as here.
 @logger.catch
 def Send_SMS(text, receipient):
     # TODO place a block on SMS between 10pm and 8am

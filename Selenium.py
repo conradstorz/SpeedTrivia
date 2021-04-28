@@ -1,3 +1,4 @@
+from SpeedTrivia import Send_SMS
 import sys
 from time import sleep
 from selenium import webdriver
@@ -358,23 +359,47 @@ def Fill_and_submit_trivia_form(data, Send=False):
         ANSWER: "Place your answer here",
         SUBMIT: True,}  # use False for testing.
     """
+
+    def is_good(value, good_values):
+        """Return True if value is part of good_values.
+            value and good_values can be a string or list of stings.
+            Edgecase: if good_values is equal to FLEXABLE_FIELD_INPUT variable then any reasonably long string of text is allowed.
+            Edgecase: if value is a list of strings they should each match the rules for FLEXABLE_FIELD_INPUT
+        Args:
+            value ([type]): a string or list of strings
+            good_values ([type]): a string or list of strings
+        Returns: (Bool)
+        """
+        if good_values == FLEXABLE_FIELD_INPUT: 
+            if type(value) == list:
+                pass  # TODO check each value for validity
+            return True
+        if type(value) == str:
+            if value in good_values:
+                return True
+        return False
+
     browser_token = webdriver.Chrome()
-    browser_token.implicitly_wait(10)
+    browser_token.implicitly_wait(2)
     browser_token.get(THE_JOTFORM_URL)
-    logger.debug(pprint_dicts(data))
+    logger.debug(f'\n{pprint_dicts(data)}')
+    # check the supplied data object
     if data[ROUND] in WEBFORM.keys():
         fields_and_functions = WEBFORM[data[ROUND]]
-        logger.debug(pprint_dicts(fields_and_functions))
-        logger.debug("...")
+        logger.debug(f'\n{pprint_dicts(fields_and_functions)}')
     else:
         logger.error(f'Bad round name: {data[ROUND]}')
-        return f"Could not submit form."
-    # fill the 'Round' value on the form first.
+        # CANCEL form submission and inform user.
+        browser_token.close()        
+        return f'Bad round name: {data[ROUND]}'
+    # check the user provided round number/name
+    # fill the provided 'Round' value on the form first.
     Round = data.pop(ROUND)
     Submit = data.pop(SUBMIT)
     legal_responses = fields_and_functions[ROUND][VALID_RESPONSES]
     if Round in legal_responses:
         logger.debug("Ready to set the round field of form.")
+        # the Round field changes the form fields that are available
         fields_and_functions[ROUND][PROPER_FUNCTION](
             browser_token, Round, fields_and_functions[ROUND][FORM_FIELD_ID]
         )
@@ -382,6 +407,8 @@ def Fill_and_submit_trivia_form(data, Send=False):
         sleep(0.5)  # pause to allow page to re-set after round is chosen.
     else:
         logger.error(f"Round: {Round} not found in {legal_responses}")
+        # CANCEL form submission and inform user.
+        browser_token.close()        
         return f"Acceptable Round values are {legal_responses}"
     # form is now initialized to accept the correct data
     valid_fields = fields_and_functions.keys()
@@ -390,8 +417,8 @@ def Fill_and_submit_trivia_form(data, Send=False):
             legal_responses = fields_and_functions[current_field][VALID_RESPONSES]
             logger.debug(
                 f"Field: {current_field} Value: '{value}' Acceptable responses: '{legal_responses}'"
-            )
-            if value in legal_responses:
+            ) # (value == legal_responses) or (legal_responses == FLEXABLE_FIELD_INPUT)
+            if is_good(value, legal_responses):
                 fields_and_functions[current_field][PROPER_FUNCTION](
                     browser_token, value, fields_and_functions[current_field][FORM_FIELD_ID]
                 )
@@ -400,9 +427,12 @@ def Fill_and_submit_trivia_form(data, Send=False):
             else:
                 logger.error(f'Illegal value: {value}')
                 # CANCEL form submission and inform user.
+                browser_token.close()
                 return f'Value: "{value}" for field "{current_field}" is not valid.'
         else:
             logger.error(f"Field: '{current_field}' not found in: '{valid_fields}'")
+            # CANCEL form submission and inform user.
+            browser_token.close()            
             return f"Input Field: '{current_field}' not found in '{valid_fields}'"
     # Now submit the form if True
     logger.debug("Ready to submit form.")
@@ -413,12 +443,14 @@ def Fill_and_submit_trivia_form(data, Send=False):
         )
     else:
         logger.error(f"Submit failed. Value: {Submit} not in {legal_responses}")
-        return "Submit of form failed."
-    sleep(0.5)
+        # CANCEL form submission and inform user.
+        browser_token.close()        
+        return f"Submit failed. Value: {Submit} not in {legal_responses}"
+    sleep(0.05)
     browser_token.close()
     data[SUBMIT] = Submit  # place submit field back into dictionary
     data[ROUND] = Round  # place round entry back into dictionary
-    return f"Trivia form sent:\n{pprint_dicts(data)}"
+    return f"Trivia form sent."
 
 
 @logger.catch
@@ -498,7 +530,7 @@ def main():
 
     for k, sampleform in sample_answers.items():
         logger.info(f'Sending sample answer #{k}')
-        Fill_and_submit_trivia_form(sampleform, Send=SENDFORM)
+        print(Fill_and_submit_trivia_form(sampleform, Send=SENDFORM))
     sleep(1)
     sys.exit(0)
 
