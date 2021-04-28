@@ -10,8 +10,8 @@ import datetime
 
 class Team():
 
-    def __init__(self, teamname):
-        self.teamname = teamname
+    def __init__(self, name):
+        self.name = name
         self.round = 1
         self.question = 1
         self.spent_points = []

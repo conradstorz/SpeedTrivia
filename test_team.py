@@ -3,7 +3,7 @@ from team import Team
 def test_creating_a_team_sets_defaults():
     team = Team("Test Team")
 
-    assert team.teamname == "Test Team"
+    assert team.name == "Test Team"
     assert team.round == 1
     assert team.question == 1
 

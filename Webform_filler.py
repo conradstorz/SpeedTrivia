@@ -4,6 +4,7 @@
 from loguru import logger
 from Selenium import Fill_and_submit_trivia_form
 from pprint import pformat as pprint_dicts
+from team import Team
 
 from ST_Twilio import Send_SMS
 
@@ -67,3 +68,38 @@ def Check_for_webform_answer_submission(msid, sms_from, body_of_sms, teamname, S
         logger.info(f"SMS does not match a trivia answer format.")
         result = "Did not recognize a trivia answer."  # no response to the sender
     return result
+
+def parse_tracked_answer(team: Team, sms_body: str, send=False) -> dict:
+    """
+    Parses a simplified SMS message into the data dict needed by Fill_and_submit_trivia_form.
+    Requires that the Team object is set up and tracking rounds/questions
+    
+    Parameters:
+        team (Team): The Team object of the submitter
+        sms_body (str): Received SMS message body. Calling function will have confirmed the first word is points
+        send (bool): Whether or not to actually submit
+
+    Returns:
+        data (dict): A data dict ready to submit
+    """
+    data = {
+        "team": team.name,
+        "question": str(team.question),
+        "round": str(team.round),
+        "submit": send,
+    }
+
+    parts = sms_body.split(' ')
+    points = parts[0]
+
+    try:
+        int(points)
+    except ValueError:
+        error = f"Points not a valid number ({points})"
+    
+    answer = ' '.join(parts[1:]) # recombine the other parts
+
+    data["points"] = points
+    data["answer"] = answer
+
+    return data
