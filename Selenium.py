@@ -1,4 +1,3 @@
-from SpeedTrivia import Send_SMS
 import sys
 from time import sleep
 from selenium import webdriver
