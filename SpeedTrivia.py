@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+TESTING = False
 """SpeedTriva takes input from individual players via SMS using Twillio service.
 Players can send their name by text and get back the names of their teammates.
 Teams are "Randomly" assigned. 
@@ -192,10 +193,9 @@ def Tonights_players():
 def ReturnStatus(msid, sms_from, body_of_sms):
     """Return various details of this player."""
     logger.info("Send status to player function entered.")
-    # TODO add team name
-    stat = f"{players_database[sms_from][CALLERNAME]} your table name is {players_database[sms_from][CURRENT_TABLE_ASSIGNMENT]} and you have {players_database[sms_from][PLUS_ONES]} extra seats reserved."
+    stat = f"{players_database[sms_from][CALLERNAME]} your team name is {players_database[sms_from][CURRENT_TEAM_NAME]} and your table name is {players_database[sms_from][CURRENT_TABLE_ASSIGNMENT]} and you have {players_database[sms_from][PLUS_ONES]} extra seats reserved."
     if sms_from == CONTROLLER:
-        stat = f"{stat} --status: {TABLESIZE} per table. {len(Tonights_players())} players registered for tonight. {tables}"
+        stat = f"{stat} --status: {TABLESIZE} per table. {len(Tonights_players())} players registered for tonight."
     return stat
 
 @logger.catch
@@ -328,10 +328,13 @@ def ShuffleTables(msid, sms_from, body_of_sms):
             least_meetups = guesses[guess]
     logger.debug(f"Most unique tables are: {pprint_dicts(least_meetups)}")
     for table in least_meetups.keys():
+        logger.debug(f'processing table {table}')
         for player in least_meetups[table]:
+            logger.debug(f'     processing player {player}')
             TABLE_ASSIGNED[player] = table
     # final number of tables may be less than original estimation so re-establish
     tables = least_meetups.keys()
+    logger.info(f'Tonights tables are: {tables}')
     return "Players have been assigned tables."
 
 @logger.catch
@@ -346,9 +349,13 @@ def StartGame(msid, sms_from, body_of_sms):
         # set players tablename
         players_database[player][CURRENT_TABLE_ASSIGNMENT] = TABLE_ASSIGNED[player]
         # Notify players by text of their table assignments.
-        # Send_SMS(f"SpeedTrivia suggests you sit at table: {TABLE_ASSIGNED[player]]}" ,player)
-        logger.info(f"SpeedTrivia suggests you sit at table: {TABLE_ASSIGNED[player]}")
-        time.sleep(2)
+        sms_text = f"SpeedTrivia suggests you sit at table: {TABLE_ASSIGNED[player]}"
+        if TESTING == True:
+            logger.info(f'Update: "{sms_text}" NOT SENT to {player}.')
+        else:
+            Send_SMS(sms_text, player)
+            logger.info(f'"{sms_text}" sent to {player}')
+        time.sleep(.02) # for delay between SMS messages (probably not needed)
         # add other players from table to history list
         for teammate in least_meetups[TABLE_ASSIGNED[player]]:
             if teammate == player:
@@ -389,8 +396,12 @@ def Send_Announcement(msid, sms_from, body_of_sms):
     announcement = body_of_sms
     for player in list_players_in_database():
         #  Attach the disclaimer instructions on how to STOP texts
-        # Send_SMS(announcement, player)
-        logger.info('Bulk announcement sent.')
+        if TESTING == True:
+            logger.info(f'Announcement: "{announcement}" NOT SENT to {player}.')
+        else:
+            Send_SMS(announcement, player)
+            logger.info(f'Announcement: "{announcement}" sent to {player}')
+    logger.info('Bulk announcement sent.')
     return 'Bulk announcement sent.'
 
 @logger.catch
@@ -411,10 +422,10 @@ def Send_players_list(msid, sms_from, body_of_sms):
         player_list.append(f"{players_database[player][CALLERNAME]} with {players_database[player][PLUS_ONES]} extras. ")
     # this .join is the best approach to combine all the strings in the list.
     message = "".join(player_list)
-    # Send_SMS(message, CONTROLLER)
     logger.debug(message)
     return message
 
+# TODO place this in a Twilio module so it can be used in Webform_filler.py as well as here.
 @logger.catch
 def Send_SMS(text, receipient):
     # TODO place a block on SMS between 10pm and 8am
@@ -439,12 +450,12 @@ def Respond_to(msid, sms_from, body_of_sms):
         return response
     logger.info(pprint_dicts(players_database[sms_from]))
     cmnds = COMMANDS.keys()
-    logger.info(cmnds)
+    # logger.info(cmnds)
     for word in cmnds:
         command_slice = str(body_of_sms).lower()[:len(word)]
-        logger.debug(f'SMS slice from front of text: {command_slice}')
+        # logger.debug(f'SMS slice from front of text: {command_slice}')
         if word.lower() == command_slice:
-            # TODO Ensure that only whole words are matched.
+            # ALTERNATE APPROACH: Ensure that only whole words are matched.
             # search = word.lower()
             # strn = str(body_of_sms).lower()
             # matches = re.findall(r"\b" + search + r"\b", strn)
@@ -465,14 +476,24 @@ def Respond_to(msid, sms_from, body_of_sms):
             # break loop here to stop after first command word found.
             break
         else:
-            logger.debug(f"Did not find '{word}' in '{body_of_sms}'")
+            pass
+            # logger.debug(f"Did not find '{word}' in '{body_of_sms}'")
     else:
         logger.info("No command words found in this SMS.")
         logger.debug(f"Checking for a trivia answer form in SMS...")
-        response = Check_for_webform_answer_submission(
-            msid, sms_from, body_of_sms, players_database[sms_from][CURRENT_TEAM_NAME],
-            Send=True
+        if TESTING:
+            response = 'System under test.'
+            print(Check_for_webform_answer_submission(
+                msid, sms_from, body_of_sms, players_database[sms_from][CURRENT_TEAM_NAME],
+                Send=False
+                )
         )
+        else:
+            # TODO Ensure that the function below does not fail silently due to bad data in body_of_sms
+            response = Check_for_webform_answer_submission(
+                msid, sms_from, body_of_sms, players_database[sms_from][CURRENT_TEAM_NAME],
+                Send=True
+            )
     return response
 
 @logger.catch

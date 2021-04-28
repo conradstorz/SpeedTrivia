@@ -17,6 +17,7 @@ def Check_for_webform_answer_submission(msid, sms_from, body_of_sms, teamname, S
     Returns:
         (string): Text message to be returned to sender by Twilio.
     """
+    result = 'Undefined webform submission error.'
     data = {}
     data["team"] = teamname
     data["submit"] = Send
@@ -59,6 +60,7 @@ def Check_for_webform_answer_submission(msid, sms_from, body_of_sms, teamname, S
                 data["answer"] = Answers
                 data["points"] = Points
         logger.info(f"SMS decoded as:\n{pprint_dicts(data)}")
+        # Send_SMS(f'{pprint_dicts(data)}', sms_from)
         result = Fill_and_submit_trivia_form(data, Send=data['submit'])
     else:
         logger.info(f"SMS does not match a trivia answer format.")
