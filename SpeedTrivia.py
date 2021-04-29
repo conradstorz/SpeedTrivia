@@ -54,13 +54,11 @@ CRAZY FUTURE FUNCTIONALITY:
     
 """
 
-import os
+
 import sys
 import time
 from nltk.corpus.reader import propbank
-from twilio.rest import Client
 from flask import Flask, request, redirect
-from twilio.twiml.messaging_response import MessagingResponse
 from loguru import logger
 from pprint import pformat as pprint_dicts
 import datetime as dt
@@ -77,6 +75,7 @@ from collections import defaultdict
 import random
 
 from ST_common import *
+from ST_Twilio import Send_SMS
 
 def ProperNounExtractor(text):
     # if text is only a single word, like 'Doug', this routine does not identify it as a name.
@@ -96,28 +95,6 @@ def how_long_ago_is(past_time):
     days_ = delta_ / dt.timedelta(days=1)
     logger.debug(f"Time since last contact: {days_:.2f} days.")
     return days_
-
-
-tables = (
-    list()
-)  # A global list of table labels that is defined within the 'ShuffleTables' function
-least_meetups = dict()  # A global that is defined within the 'ShuffleTables' function
-TABLE_ASSIGNED = dict()  # A global that is defined within the 'ShuffleTables' function
-# consisting of an entry for each player with the name of their table. (it has not been locked in during the shuffle process and gets locked in during the start function.)
-TONIGHTS_PLAYERS = list()  # A global defined within the 'ShuffleTables' function
-
-# Begin logging definition
-logger.remove()  # removes the default console logger provided by Loguru.
-# I find it to be too noisy with details more appropriate for file logging.
-# create a new log file for each run of the program
-logger.add(
-    f"{FILENAME}_{PROGRAM_START_TIME.strftime('%Y%m%d_%H%M%S%Z')}.log",
-    rotation="Sunday",
-    level="DEBUG",
-    encoding="utf8",
-)
-# end logging setup
-logger.info("Program started.")
 
 
 @logger.catch
@@ -425,14 +402,6 @@ def Send_players_list(msid, sms_from, body_of_sms):
     logger.debug(message)
     return message
 
-# TODO place this in a Twilio module so it can be used in Webform_filler.py as well as here.
-@logger.catch
-def Send_SMS(text, receipient):
-    # TODO place a block on SMS between 10pm and 8am
-    logger.info(f"Sending: '{text}' :->to->: {receipient}")
-    CLIENT.messages.create(body=text, from_=TWILLIO_SMS_NUMBER, to=receipient)
-    return
-
 @logger.catch
 def Respond_to(msid, sms_from, body_of_sms):
     """Takes incoming SMS details and determines correct response.
@@ -541,6 +510,20 @@ def check_sms_for_name(msid, sms_from, body_of_sms):
 
 if __name__ == "__main__":
     try:
+
+        # Begin logging definition
+        logger.remove()  # removes the default console logger provided by Loguru.
+        # I find it to be too noisy with details more appropriate for file logging.
+        # create a new log file for each run of the program
+        logger.add(
+            f"{FILENAME}_{PROGRAM_START_TIME.strftime('%Y%m%d_%H%M%S%Z')}.log",
+            rotation="Sunday",
+            level="DEBUG",
+            encoding="utf8",
+        )
+        # end logging setup
+        logger.info("Program started.")
+
         logger.info("Program is being run as __main__")
 
         COMMANDS = {
@@ -570,27 +553,7 @@ if __name__ == "__main__":
             "Start",
             "Size",
         ]
-
-        # Twilio token setup: 
-        # TODO move all Twilio app support to external .py file
-        # export commands GetClientID() and Send_SMS()
-        CLIENT = None
-        if not os.system("set ACCOUNT_SID"):  # are these return values inverted?
-            logger.info("Twilio ACCOUNT_SID found.")
-            if not os.system(
-                "set AUTH_TOKEN"
-            ):  # seems like they would be true if the value exists.
-                logger.info("Twilio AUTH_TOKEN found, registering Twilio Client...")
-                ACCOUNT_SID = os.environ.get("ACCOUNT_SID")
-                AUTH_TOKEN = os.environ.get("AUTH_TOKEN")
-                CLIENT = Client(ACCOUNT_SID, AUTH_TOKEN)
-                logger.info("Client token created:")
-                logger.info(CLIENT)
-        if CLIENT == None:
-            print("Client token not set. Did you load the environment variables?")
-            print("Did you re-start VScode?")
-            sys.exit(1)
-            
+        
         Send_SMS("SpeedTrivia program start.", CONTROLLER)
 
         # Save a dictionary into a pickle file.
