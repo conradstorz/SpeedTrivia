@@ -29,20 +29,34 @@ FinalQuestionWagerID = "input_24"
 
 WEBFORM_SUBMIT_BUTTON_VALUES = [True, False]
 QUESTION_PER_ROUND_VALUES = ['1', '2', '3']
-QUESTION_NUMBER_HALFTIME_FINAL_TIEBREAKER = []
+QUESTION_NUMBER_HALFTIME_FINAL_TIEBREAKER = []  # Not required and no field is available
 VALID_ROUND_1_POINTS = ['2', '4', '6']
-VALID_HALFTIME_POINTS = []
+VALID_HALFTIME_POINTS = []  # Not required and no field is available
 VALID_ROUND_2_POINTS = ['5', '7', '9']
 VALID_FINAL_ROUND_POINTS = ['0','1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20']
-VALID_TIEBREAKER_POINTS = []
-TIEBREAKER_POINTS_VALUES = []
+VALID_TIEBREAKER_POINTS = []  # Not required and no field is available 
 
-FORM_FIELD_ID = "fld"
-PROPER_FUNCTION = "func"
+FORM_FIELD_ID = "field_id"
+PROPER_FUNCTION = "function_pointer"
 VALID_RESPONSES = "valid_response"
 ROUND = "round"
 SUBMIT = "submit"
 TEAM_NAME_FIELD = "team"
+
+ROUND_1 = "1"
+ROUND_2 = "2"
+ROUND_3 = "3"
+ROUND_HALFTIME = "Halftime"
+ROUND_4 = "4"
+ROUND_5 = "5"
+ROUND_6 = "6"
+ROUND_FINAL = "Final"
+ROUND_TIEBREAKER = "Tiebreaker"
+
+FLEXABLE_FIELD_INPUT = "any"  # Flag to indicate any reasonable text can be input.
+QUESTION = "question"
+POINTS = "points"
+ANSWER = "answer"
 
 def Fill_a_field(webobj, value, field_id):
     logger.debug("fill field")
@@ -100,20 +114,6 @@ def Pass_(value, field_id):
     logger.debug(f"field: {field_id} Value: {value}")
     pass
 
-ROUND_1 = "1"
-ROUND_2 = "2"
-ROUND_3 = "3"
-ROUND_HALFTIME = "Halftime"
-ROUND_4 = "4"
-ROUND_5 = "5"
-ROUND_6 = "6"
-ROUND_FINAL = "Final"
-ROUND_TIEBREAKER = "Tiebreaker"
-
-FLEXABLE_FIELD_INPUT = "any"  # Flag to indicate any reasonable text can be input.
-QUESTION = "question"
-POINTS = "points"
-ANSWER = "answer"
 WEBFORM = {
     ROUND_1: {
         TEAM_NAME_FIELD: {FORM_FIELD_ID: TeamNameBoxID, PROPER_FUNCTION: Fill_a_field, VALID_RESPONSES: FLEXABLE_FIELD_INPUT},
@@ -300,7 +300,7 @@ WEBFORM = {
             VALID_RESPONSES: QUESTION_NUMBER_HALFTIME_FINAL_TIEBREAKER,
         },
         POINTS: {
-            FORM_FIELD_ID: FinalQuestionWagerID,
+            FORM_FIELD_ID: FinalQuestionWagerID,  # NOTE: This field on JotForm is not set "Required" but should be.
             PROPER_FUNCTION: Fill_a_field,
             VALID_RESPONSES: VALID_FINAL_ROUND_POINTS,
         },
@@ -330,7 +330,7 @@ WEBFORM = {
         POINTS: {
             FORM_FIELD_ID: FirstHalfPointBoxID,
             PROPER_FUNCTION: Fill_a_dropdown,
-            VALID_RESPONSES: TIEBREAKER_POINTS_VALUES,
+            VALID_RESPONSES: VALID_TIEBREAKER_POINTS,
         },
         ANSWER: {FORM_FIELD_ID: AnswerBoxID, PROPER_FUNCTION: Fill_a_field, VALID_RESPONSES: FLEXABLE_FIELD_INPUT},
         SUBMIT: {
@@ -378,6 +378,20 @@ def Fill_and_submit_trivia_form(data, Send=False):
             if value in good_values:
                 return True
         return False
+    
+    def is_complete(data, required):
+        """Checks 'data' variable for presence of ALL required fields.
+            Fields that specify an empty list '[]' are not required.
+            Fields that specify 'any' need to be sanitized and restricted to a reasonable length.
+
+        Args:
+            data (dict): Should contain ALL the field values to be submitted.
+            required (list): Names of ALL fields for this form.
+
+        Returns:
+            [bool]: True/False
+        """
+        return True  # TODO make this work as described.
 
     browser_token = webdriver.Chrome()
     browser_token.implicitly_wait(2)
@@ -391,11 +405,11 @@ def Fill_and_submit_trivia_form(data, Send=False):
         logger.error(f'Bad round name: {data[ROUND]}')
         # CANCEL form submission and inform user.
         browser_token.close()        
-        return f'Bad round name: {data[ROUND]}'
+        return f'Submit failed. Bad round name: {data[ROUND]}'
     # check the user provided round number/name
     # fill the provided 'Round' value on the form first.
     Round = data.pop(ROUND)
-    Submit = data.pop(SUBMIT)
+    Submit = data.pop(SUBMIT)  # TODO check this value to be sure it exists and is a bool
     legal_responses = fields_and_functions[ROUND][VALID_RESPONSES]
     if Round in legal_responses:
         logger.debug("Ready to set the round field of form.")
@@ -409,15 +423,22 @@ def Fill_and_submit_trivia_form(data, Send=False):
         logger.error(f"Round: {Round} not found in {legal_responses}")
         # CANCEL form submission and inform user.
         browser_token.close()        
-        return f"Acceptable Round values are {legal_responses}"
+        return f"Submit failed. Acceptable Round values are {legal_responses}"
     # form is now initialized to accept the correct data
     valid_fields = fields_and_functions.keys()
+    # TODO check that 'data' has an entry for each required field.
+    # Fields that are constrained to an empty list '[]' are not required.
+    if is_complete(data, valid_fields) == False:
+        logger.error(f'Incomplete data for specified form:\n{pprint_dicts(data)}')
+        # CANCEL form submission and inform user.
+        browser_token.close()
+        return f'Submit failed. Incomplete data for specified form:\n{pprint_dicts(data)}'
     for current_field, value in data.items():
         if current_field in valid_fields:
             legal_responses = fields_and_functions[current_field][VALID_RESPONSES]
             logger.debug(
                 f"Field: {current_field} Value: '{value}' Acceptable responses: '{legal_responses}'"
-            ) # (value == legal_responses) or (legal_responses == FLEXABLE_FIELD_INPUT)
+            )
             if is_good(value, legal_responses):
                 fields_and_functions[current_field][PROPER_FUNCTION](
                     browser_token, value, fields_and_functions[current_field][FORM_FIELD_ID]
@@ -428,12 +449,12 @@ def Fill_and_submit_trivia_form(data, Send=False):
                 logger.error(f'Illegal value: {value}')
                 # CANCEL form submission and inform user.
                 browser_token.close()
-                return f'Value: "{value}" for field "{current_field}" is not valid.'
+                return f'Submit failed. Value: "{value}" for field "{current_field}" is not valid.'
         else:
             logger.error(f"Field: '{current_field}' not found in: '{valid_fields}'")
             # CANCEL form submission and inform user.
             browser_token.close()            
-            return f"Input Field: '{current_field}' not found in '{valid_fields}'"
+            return f"Submit failed. Input Field: '{current_field}' not found in '{valid_fields}'"
     # Now submit the form if True
     logger.debug("Ready to submit form.")
     legal_responses = fields_and_functions[SUBMIT][VALID_RESPONSES]

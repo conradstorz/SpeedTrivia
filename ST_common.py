@@ -57,3 +57,11 @@ DATABASE_PATHOBJ = Path(f"{FILENAME}.db")
 TABLESIZE = 3
 CONTROLLER = "+18125577095"
 FROZEN = False
+
+tables = (
+    list()
+)  # A global list of table labels that is defined within the 'ShuffleTables' function
+least_meetups = dict()  # A global that is defined within the 'ShuffleTables' function
+TABLE_ASSIGNED = dict()  # A global that is defined within the 'ShuffleTables' function
+# consisting of an entry for each player with the name of their table. (it has not been locked in during the shuffle process and gets locked in during the start function.)
+TONIGHTS_PLAYERS = list()  # A global defined within the 'ShuffleTables' function
