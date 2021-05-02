@@ -69,6 +69,24 @@ def Check_for_webform_answer_submission(msid, sms_from, body_of_sms, teamname, S
         result = "Did not recognize a trivia answer."  # no response to the sender
     return result
 
+def determine_answer_format(sms_body:str) -> str:
+    """
+    Scan an SMS body to determine which format the answer is in (and therefore which parsing function to use)
+
+    Parameters:
+        sms_body (str): The raw SMS body
+
+    Returns:
+        format (str): A word describing the format. (eg. "precise", "tracked")
+    """
+    first_char = sms_body[0].upper()
+    if first_char == "R":
+        return "precise"
+    elif first_char.isdigit():
+        return "tracked"
+    else:
+        return "unrecognized"
+
 def parse_tracked_answer(team: Team, sms_body: str, send=False) -> dict:
     """
     Parses a simplified SMS message into the data dict needed by Fill_and_submit_trivia_form.
