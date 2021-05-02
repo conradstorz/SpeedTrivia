@@ -81,3 +81,18 @@ def test_team_validates_points_based_on_round():
     assert resp == False
     resp = team.submit_answer(20)
     assert resp == True
+
+def test_get_team_by_name():
+    team1 = Team("Test Team 1")
+    team2 = Team("Test Team 2")
+
+    result = Team.get_team_by_name("Test Team 2")
+    
+    assert result == team2
+
+def test_get_team_by_name_returns_None_if_no_team_exists():
+    team1 = Team("Test Team 1")
+
+    result = Team.get_team_by_name("Fish")
+
+    assert result is None

@@ -2,7 +2,7 @@ from Webform_filler import parse_tracked_answer, determine_answer_format, Check_
 from team import Team
 from pprint import pformat
 
-def test_parse_tracked_answer():
+def test_parse_tracked_answer_with_standard_round_question():
     team = Team("Test Team")
     sms_body = "4 Test"
     data = parse_tracked_answer(team, sms_body, True)
@@ -58,8 +58,25 @@ def test_Check_for_webform_answer_submission_with_precise_answer(mocker):
     mocked.assert_called_once_with(expected_data, Send=True)
     assert res == "Called fill and submit"
 
-def test_Check_for_webform_answer_submission_with_tracked_answer():
-    assert False
+def test_Check_for_webform_answer_submission_with_tracked_answer(mocker):
+    mocked = mocker.patch('Webform_filler.Fill_and_submit_trivia_form')
+    mocked.return_value = "Called fill and submit"
+    sms_body = '4 Fish'
+    team = Team("Test Team")
+
+    expected_data = {
+        "team": "Test Team",
+        "round": "1",
+        "question": "1",
+        "points": "4",
+        "answer": "Fish",
+        "submit": True,
+    }
+
+    res = Check_for_webform_answer_submission(1, '+15551234567', sms_body, 'Test Team', True)
+
+    mocked.assert_called_once_with(expected_data, Send=True)
+    assert res == "Called fill and submit"
 
 def test_Check_for_webform_answer_submission_with_gibberish():
     #result = "Did not recognize a trivia answer."  # no response to the sender

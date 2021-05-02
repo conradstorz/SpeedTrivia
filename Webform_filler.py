@@ -19,51 +19,15 @@ def Check_for_webform_answer_submission(msid, sms_from, body_of_sms, teamname, S
     Returns:
         (string): Text message to be returned to sender by Twilio.
     """
-    result = 'Undefined webform submission error.'
-    data = {}
-    data["team"] = teamname
-    data["submit"] = Send
-    t = body_of_sms.lower()
-    if t[0] == "r":
-        # First character matches pattern
-        if t[1] == "f":
-            data["round"] = "Final"
-        elif t[1] == "h":
-            data["round"] = "Halftime"
-        elif t[1] == "t":
-            data["round"] = "Tiebreaker"
-        else:
-            data["round"] = t[1]
-        if t[2] == "q":
-            # this matches rounds 1 through 6
-            data["question"] = t[3]
-            if t[4] == "p":
-                data["points"] = t[5]
-                data["answer"] = body_of_sms[7:]
-        elif t[2] == "a":
-            # This pattern matches Halftime.
-            Answers = body_of_sms[3:].split("#")
-            if len(Answers) < 5:
-                # good result
-                data["answer"] = Answers
-                # TODO end here and send form
-            else:
-                # trim answers or ask for clarification.
-                data["answer"] = Answers
-        elif t[2] == "p":
-            # This pattern matches Final round
-            Points = t[3]  # there's always at least one digit points wagered
-            data["points"] = Points
-            Answers = body_of_sms[5:].split("#")
-            data["answer"] = Answers
-            if t[4] in "0123456789":
-                Points = t[3:5]  # this is a 2 digit points wager
-                Answers = body_of_sms[6:].split("#")
-                data["answer"] = Answers
-                data["points"] = Points
-        logger.info(f"SMS decoded as:\n{pprint_dicts(data)}")
-        Send_SMS(f'{pprint_dicts(data)}', sms_from)
+    answer_fmt = determine_answer_format(body_of_sms)
+    if answer_fmt == "precise":
+        data = parse_precise_answer(teamname, body_of_sms, Send)
         result = Fill_and_submit_trivia_form(data, Send=data['submit'])
+
+    elif answer_fmt == "tracked":
+        team = Team.get_team_by_name(teamname)
+        parsed_answer = parse_tracked_answer(team, body_of_sms, Send)
+        result = Fill_and_submit_trivia_form(parsed_answer, Send=parsed_answer['submit'])
     else:
         logger.info(f"SMS does not match a trivia answer format.")
         result = "Did not recognize a trivia answer."  # no response to the sender
@@ -87,7 +51,53 @@ def determine_answer_format(sms_body:str) -> str:
     else:
         return "unrecognized"
 
-def parse_tracked_answer(team: Team, sms_body: str, send=False) -> dict:
+def parse_precise_answer(teamname: str, body_of_sms: str, Send: bool=False) -> dict:
+    result = 'Undefined webform submission error.'
+    data = {}
+    data["team"] = teamname
+    data["submit"] = Send
+    t = body_of_sms.lower()
+    # First character matches pattern
+    if t[1] == "f":
+        data["round"] = "Final"
+    elif t[1] == "h":
+        data["round"] = "Halftime"
+    elif t[1] == "t":
+        data["round"] = "Tiebreaker"
+    else:
+        data["round"] = t[1]
+    if t[2] == "q":
+        # this matches rounds 1 through 6
+        data["question"] = t[3]
+        if t[4] == "p":
+            data["points"] = t[5]
+            data["answer"] = body_of_sms[7:]
+    elif t[2] == "a":
+        # This pattern matches Halftime.
+        Answers = body_of_sms[3:].split("#")
+        if len(Answers) < 5:
+            # good result
+            data["answer"] = Answers
+            # TODO end here and send form
+        else:
+            # trim answers or ask for clarification.
+            data["answer"] = Answers
+    elif t[2] == "p":
+        # This pattern matches Final round
+        Points = t[3]  # there's always at least one digit points wagered
+        data["points"] = Points
+        Answers = body_of_sms[5:].split("#")
+        data["answer"] = Answers
+        if t[4] in "0123456789":
+            Points = t[3:5]  # this is a 2 digit points wager
+            Answers = body_of_sms[6:].split("#")
+            data["answer"] = Answers
+            data["points"] = Points
+    logger.info(f"SMS decoded as:\n{pprint_dicts(data)}")
+    Send_SMS(f'{pprint_dicts(data)}', sms_from)
+    return data
+
+def parse_tracked_answer(team: Team, sms_body: str, send: bool=False) -> dict:
     """
     Parses a simplified SMS message into the data dict needed by Fill_and_submit_trivia_form.
     Requires that the Team object is set up and tracking rounds/questions

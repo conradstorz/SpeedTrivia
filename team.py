@@ -10,11 +10,15 @@ import datetime
 
 class Team():
 
+    # Class-level variables
+    instances = {}
+
     def __init__(self, name):
         self.name = name
         self.round = 1
         self.question = 1
         self.spent_points = []
+        self.__class__.instances[self.name] = self
 
     def submit_answer(self, points):
         if points in self.spent_points:
@@ -62,3 +66,7 @@ class Team():
             raise ValueError("Tiebreaker is the final round!")
         else:
             self.round += 1
+
+    @classmethod
+    def get_team_by_name(cls, name):
+        return cls.instances.get(name, None)
