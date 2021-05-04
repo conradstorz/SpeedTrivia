@@ -1,6 +1,5 @@
 from Webform_filler import parse_tracked_answer, determine_answer_format, Check_for_webform_answer_submission
 from team import Team
-from pprint import pformat
 
 def test_parse_tracked_answer_with_standard_round_question():
     team = Team("Test Team")
@@ -17,6 +16,28 @@ def test_parse_tracked_answer_with_standard_round_question():
     }
 
     assert data == expected
+
+def test_parse_tracked_answer_with_halftime_question():
+    team = Team("Test Team")
+    assert False
+
+def test_skipped_question_adjusts_to_new_round_and_question():
+    assert False
+
+def test_parse_tracked_answer_with_final_question():
+    assert False
+
+def test_parse_precise_answer_with_standard_round_question():
+    assert False
+
+def test_parse_precise_answer_with_halftime_question():
+    assert False
+
+def test_parse_precise_answer_with_final_question():
+    assert False
+
+def test_submitting_a_precise_answer_updates_the_Team():
+    assert False
 
 def test_determine_answer_format_with_precise_answer():
     sms_body = "R4Q1P7AFish"
