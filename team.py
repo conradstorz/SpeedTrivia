@@ -3,7 +3,7 @@ Team object?
 Team
     members
     current round
-        used points
+        used points  # unused points? I'm working on a data structure that contains all possible wagers per game.
         current question
 """
 import datetime
@@ -15,8 +15,8 @@ class Team():
 
     def __init__(self, name):
         self.name = name
-        self.round = 1
-        self.question = 1
+        self.round = '1'
+        self.question = '1'
         self.spent_points = []
         self.__class__.instances[self.name] = self
 
@@ -25,19 +25,22 @@ class Team():
             return False
 
         valid = False
-        if self.round in (1,2,3) and points in (2,4,6):
+        if self.round in ('1','2','3') and points in ('2','4','6'):
             valid = True
-        elif self.round in (4,5,6) and points in (5,7,9):
+        elif self.round in ('4','5','6') and points in ('5','7','9'):
             valid = True
         elif self.round == 'halftime':
             valid = True
-        elif self.round == 'final' and points >= 0 and points <= 20:
+        elif self.round == 'final' and int(points) >= 0 and int(points) <= 20:
+            # All values in this app are strings
             valid = True
         elif self.round == 'tiebreaker':
-            raise NotImplementedError("Don't know what points are valid for tiebreaker. None?")
+            valid = True
+            # raise NotImplementedError("Don't know what points are valid for tiebreaker. None?")
         
         if valid:
             self.spent_points.append(points)
+            # TODO handle all values as strings
             self.increment_question()
             return True
         else:
@@ -45,12 +48,14 @@ class Team():
 
     def increment_question(self):
         # increment rounds
+        # TODO handle all values as strings
         if self.round in ('halftime', 'final') or self.question == 3:
             self.increment_round()
         else:
             self.question += 1
 
     def increment_round(self):
+        # TODO handle all values as strings
         self.question = 1
         self.spent_points = []
 
