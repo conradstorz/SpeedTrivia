@@ -1,4 +1,5 @@
 from collections import defaultdict
+
 from loguru import logger
 
 # begin definition of default dict keys for players
@@ -10,6 +11,7 @@ PARTNER_HISTORY = "Partners_history"
 MESSAGE_HISTORY = "Message_history"
 CURRENT_TABLE_ASSIGNMENT = "Current_Table"
 CURRENT_TEAM_NAME = "Current_team"
+
 
 @logger.catch
 def dict_default():

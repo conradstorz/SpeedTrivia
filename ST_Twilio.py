@@ -2,12 +2,15 @@
 
 import os
 import sys
+
 from loguru import logger
-from ST_common import *
 from twilio.rest import Client
+
+from ST_common import *
+
 # from twilio.twiml.messaging_response import MessagingResponse
 
-# Twilio token setup: 
+# Twilio token setup:
 CLIENT = None
 if not os.system("set ACCOUNT_SID"):  # are these return values inverted?
     logger.info("Twilio ACCOUNT_SID found.")
@@ -24,7 +27,7 @@ if CLIENT == None:
     print("Client token not set. Did you load the environment variables?")
     print("Did you re-start VScode?")
     sys.exit(1)
-    
+
 
 @logger.catch
 def Send_SMS(text, receipient):

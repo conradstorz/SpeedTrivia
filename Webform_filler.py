@@ -1,13 +1,17 @@
 """Take a string of text from SMS and fill out trivia form.
 """
 
-from loguru import logger
-from Selenium import Fill_and_submit_trivia_form
 from pprint import pformat as pprint_dicts
 
+from loguru import logger
+
+from Selenium import Fill_and_submit_trivia_form
 from ST_Twilio import Send_SMS
 
-def Check_for_webform_answer_submission(msid, sms_from, body_of_sms, teamname, Send=False):
+
+def Check_for_webform_answer_submission(
+    msid, sms_from, body_of_sms, teamname, Send=False
+):
     """Take a string in the form: RxQxPxxAany text to the end of the string as an answer.
 
     Args:
@@ -18,7 +22,7 @@ def Check_for_webform_answer_submission(msid, sms_from, body_of_sms, teamname, S
     Returns:
         (string): Text message to be returned to sender by Twilio.
     """
-    result = 'Undefined webform submission error.'
+    result = "Undefined webform submission error."
     data = {}
     data["team"] = teamname
     data["submit"] = Send
@@ -61,8 +65,8 @@ def Check_for_webform_answer_submission(msid, sms_from, body_of_sms, teamname, S
                 data["answer"] = Answers
                 data["points"] = Points
         logger.info(f"SMS decoded as:\n{pprint_dicts(data)}")
-        Send_SMS(f'{pprint_dicts(data)}', sms_from)
-        result = Fill_and_submit_trivia_form(data, Send=data['submit'])
+        Send_SMS(f"{pprint_dicts(data)}", sms_from)
+        result = Fill_and_submit_trivia_form(data, Send=data["submit"])
     else:
         logger.info(f"SMS does not match a trivia answer format.")
         result = "Did not recognize a trivia answer."  # no response to the sender
