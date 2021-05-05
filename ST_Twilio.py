@@ -6,7 +6,7 @@ import sys
 from loguru import logger
 from twilio.rest import Client
 
-from ST_common import *
+TWILLIO_SMS_NUMBER = "+18122038235"  # Paoli native number bought from Twilio
 
 # from twilio.twiml.messaging_response import MessagingResponse
 
