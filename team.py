@@ -40,7 +40,7 @@ class Team():
         
         if valid:
             self.spent_points.append(points)
-            # TODO handle all values as strings
+            # handle all values as strings
             self.increment_question()
             return True
         else:
@@ -48,29 +48,29 @@ class Team():
 
     def increment_question(self):
         # increment rounds
-        # TODO handle all values as strings
-        if self.round in ('halftime', 'final') or self.question == 3:
+        # handle all values as strings
+        if self.round in ('halftime', 'final') or self.question == '3':
             self.increment_round()
         else:
-            self.question += 1
+            self.question = str(int(self.question) + 1)
 
     def increment_round(self):
-        # TODO handle all values as strings
-        self.question = 1
+        # handle all values as strings
+        self.question = '1'
         self.spent_points = []
 
-        if self.round == 3:
+        if self.round == '3':
             self.round = 'halftime'
         elif self.round == 'halftime':
-            self.round = 4
-        elif self.round == 6:
+            self.round = '4'
+        elif self.round == '6':
             self.round = 'final'
         elif self.round == 'final':
             self.round = 'tiebreaker'
         elif self.round == 'tiebreaker':
             raise ValueError("Tiebreaker is the final round!")
         else:
-            self.round += 1
+            self.round = str(int(self.round) + 1)
 
     @classmethod
     def get_team_by_name(cls, name):
