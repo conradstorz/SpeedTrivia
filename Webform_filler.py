@@ -22,11 +22,15 @@ def Check_for_webform_answer_submission(msid, sms_from, body_of_sms, teamname, S
     answer_fmt = determine_answer_format(body_of_sms)
     if answer_fmt == "precise":
         data = parse_precise_answer(teamname, body_of_sms, Send)
+        logger.info(f"SMS decoded as:\n{pprint_dicts(data)}")
+        Send_SMS(f'{pprint_dicts(data)}', sms_from)        
         result = Fill_and_submit_trivia_form(data, Send=data['submit'])
 
     elif answer_fmt == "tracked":
         team = Team.get_team_by_name(teamname)
         parsed_answer = parse_tracked_answer(team, body_of_sms, Send)
+        logger.info(f"SMS decoded as:\n{pprint_dicts(parsed_answer)}")
+        Send_SMS(f'{pprint_dicts(parsed_answer)}', sms_from)        
         result = Fill_and_submit_trivia_form(parsed_answer, Send=parsed_answer['submit'])
     else:
         logger.info(f"SMS does not match a trivia answer format.")
@@ -93,8 +97,6 @@ def parse_precise_answer(teamname: str, body_of_sms: str, Send: bool=False) -> d
             Answers = body_of_sms[6:].split("#")
             data["answer"] = Answers
             data["points"] = Points
-    logger.info(f"SMS decoded as:\n{pprint_dicts(data)}")
-    Send_SMS(f'{pprint_dicts(data)}', sms_from)
     return data
 
 def parse_tracked_answer(team: Team, sms_body: str, send: bool=False) -> dict:
