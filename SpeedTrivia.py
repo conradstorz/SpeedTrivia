@@ -293,7 +293,10 @@ def ReturnStatus(msid, sms_from, body_of_sms):
 def SuggestFunny(msid, sms_from, body_of_sms):
     """Return some ideas for team names."""
     logger.info("Funny team name suggestions entered.")
-    return msid
+    result = ''
+    while len(result) < 140:
+        result = result + random.choice(POSSIBLE_TEAM_NAMES)
+    return result
 
 
 @logger.catch
@@ -602,6 +605,7 @@ if __name__ == "__main__":
             This is the entrypoint for SpeedTrivia functionality.
             """
             # log this number to track memory useage and monitor for memory leaks.
+            # TODO take a timestamp snapshot here
             memory_footprint = sys.getallocatedblocks()
             logger.debug(f"Running program footprint is: {memory_footprint}")
             logger.info("Message received:")
@@ -623,6 +627,7 @@ if __name__ == "__main__":
             logger.info("Updating database...")
             pickle.dump(players_database, open(DATABASE_PATHOBJ, "wb"))
             logger.info("Returning control to Flask.")
+            # TODO take another time snapshot and log the time elapsed.
             return reply
 
         # Hand control to Flask

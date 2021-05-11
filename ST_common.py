@@ -82,3 +82,7 @@ TABLE_ASSIGNED = dict()  # A global that is defined within the 'ShuffleTables' f
 # consisting of an entry for each player with the name of their table. (it has not been locked in during the shuffle process and gets locked in during the start function.)
 TONIGHTS_PLAYERS = list()  # A global defined within the 'ShuffleTables' function
 
+POSSIBLE_TEAM_NAMES = []
+with open('team_names.txt', 'r') as fh:
+    POSSIBLE_TEAM_NAMES = fh.readlines()
+
