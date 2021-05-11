@@ -292,7 +292,7 @@ def ReturnStatus(msid, sms_from, body_of_sms):
 @logger.catch
 def SuggestFunny(msid, sms_from, body_of_sms):
     """Return some ideas for team names."""
-    logger.info("Funny team name suggestions entered.")
+    logger.info("Funny team name suggestions function entered.")
     result = ''
     while len(result) < 140:
         result = result + random.choice(POSSIBLE_TEAM_NAMES)
@@ -302,7 +302,7 @@ def SuggestFunny(msid, sms_from, body_of_sms):
 @logger.catch
 def SuggestSerious(msid, sms_from, body_of_sms):
     """Suggest only serious names."""
-    logger.info("Serious team name suggestions entered.")
+    logger.info("Serious team name suggestions function entered.")
     return msid
 
 
