@@ -173,6 +173,8 @@ def ask_caller_their_name():
 def check_sms_for_name(msid, sms_from, body_of_sms):
     # Function to extract the proper names from free form text.
     logger.info("Searching the sms for the callers name.")
+    if (body_of_sms == None) or (len(body_of_sms) <= 0):
+        return "Empty Message"
     callername = ProperNounExtractor(body_of_sms)
     if callername == "Changename":
         callername = body_of_sms.split()[1]  # Kludge
@@ -617,7 +619,11 @@ if __name__ == "__main__":
             logger.info(sms_from)
             logger.info(sms_body)
             # Generate an appropriate response (if any)
-            reply = Respond_to(sms_MSID, sms_from, sms_body)
+            if (sms_body == None) or (sms_from == None) or (sms_MSID == None):
+                logger.error(f'Invalid SMS recieved. "None" value encountered.')
+                reply = "Unknown system error. SMS is invalid."
+            else:
+                reply = Respond_to(sms_MSID, sms_from, sms_body)
             if reply == "":
                 logger.info("No response needed.")
                 reply = "Thank you."

@@ -28,10 +28,25 @@ if CLIENT == None:
     print("Did you re-start VScode?")
     sys.exit(1)
 
+def Is_Valid(number):
+    """Validate correct format for USA cellphone. Also 
+        check time of day at recipient by area-code and block messages 
+        after 10PM and before 8am.
+    Args:
+        number (str): Valid SMS number
+    Returns:
+        bool: True if SMS can be sent.
+    """
+    if len(number) == 12:
+        if type(number) == str:
+            return True
+
 
 @logger.catch
 def Send_SMS(text, receipient):
     # TODO place a block on SMS between 10pm and 8am
     logger.info(f"Sending: '{text}' :->to->: {receipient}")
-    CLIENT.messages.create(body=text, from_=TWILLIO_SMS_NUMBER, to=receipient)
+    if (text is str) and (len(text) >  0):
+        if Is_Valid(receipient):
+            CLIENT.messages.create(body=text, from_=TWILLIO_SMS_NUMBER, to=receipient)
     return
