@@ -80,12 +80,14 @@ def Respond_to(msid, sms_from, body_of_sms):
         str: The string sent back to the caller.
     """
     response = update_caller_database(msid, sms_from, body_of_sms)
+    logger.info(pprint_dicts(players_database[sms_from]))
     if (
         response
         == "Hello! I don't have your number in my records. Could you please tell me your name?"
     ):
         return response
-    logger.info(pprint_dicts(players_database[sms_from]))
+    elif 'Glad to meet you. Welcome to SpeedTrivia.' in response:  # new player name has been found and entered.
+        return response
     cmnds = COMMANDS.keys()
     # logger.info(cmnds)
     for word in cmnds:
@@ -150,20 +152,19 @@ def update_caller_database(msid, sms_from, body_of_sms):
     players_database[sms_from][MESSAGE_HISTORY] = messages_list[-5:]
     logger.info(f"Caller's Name: {players_database[sms_from][CALLERNAME]}")
     if players_database[sms_from][FIRSTCALL] == None:
-        logger.info("First time caller.")
-        Send_SMS("New Caller logged.", CONTROLLER)
         players_database[sms_from][FIRSTCALL] = dt.datetime.now(pytz.timezone("UTC"))
         response = ask_caller_their_name()
-        players_database[sms_from][RECENTCALL] = dt.datetime.now(pytz.timezone("UTC"))
     else:
         if players_database[sms_from][CALLERNAME] == "":
             response = check_sms_for_name(msid, sms_from, body_of_sms)
-        players_database[sms_from][RECENTCALL] = dt.datetime.now(pytz.timezone("UTC"))
+    players_database[sms_from][RECENTCALL] = dt.datetime.now(pytz.timezone("UTC"))
     return response
 
 
 @logger.catch
 def ask_caller_their_name():
+    logger.info("First time caller.")
+    Send_SMS("New Caller logged.", CONTROLLER)    
     logger.info("Asking the caller their name.")
     return "Hello! I don't have your number in my records. Could you please tell me your name?"
 
