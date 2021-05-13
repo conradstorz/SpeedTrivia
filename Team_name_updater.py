@@ -23,7 +23,7 @@ def normalize(txt):
     return subd
 
 
-with open("Team_names.txt", "r") as en:
+with open("Team_names.txt", "r", encoding="utf8") as en:
     existing_names = en.readlines()
 existing_names = [normalize(name) for name in existing_names]
 unique_existing_names_set = list(set(existing_names))  # This does not account for capitalization variance
@@ -56,7 +56,7 @@ all_unique_names = list(set(combined_unique_names))
 all_unique_names.sort()  # list is un-sorted after converting to a set
 
 
-pprint.pprint(all_unique_names)
+pprint.pprint(unique_from_existing_names)
 
 print(f"Original list has {len(existing_names)} names.")
 print(f"New names list has {len(new_name_submissions)} names.")
@@ -65,7 +65,7 @@ print(f'{len(combined_unique_names)} names after comparing lowercase versions.')
 print(f"{len(all_unique_names)} unique names when combined.")
 
 
-with open("Cobined_Team_names.txt", "w") as cn:
+with open("Cobined_Team_names.txt", "w", encoding="utf8") as cn:
     for name in all_unique_names:
         cn.write(name + '\n')
 
