@@ -17,8 +17,7 @@ MOST_COMMON_HELP = """Common commands are add/remove plus ones.
 "Status" tells you how many plus ones you have."""
 
 import datetime as dt
-import random
-import time
+import pickle
 from collections import defaultdict
 from pathlib import Path
 from pprint import pformat as pprint_dicts
@@ -33,7 +32,16 @@ nltk.download("stopwords")
 nltk.download("averaged_perceptron_tagger")
 from nltk.corpus import stopwords
 
-from ST_Twilio import Send_SMS
+# from ST_Twilio import Send_SMS
+
+FILENAME = "SpeedTrivia.py"
+FILENAME_PATHOBJ = Path(__file__)
+PROGRAM_START_TIME = dt.datetime.now(pytz.timezone("UTC"))
+
+DATABASE_PATHOBJ = Path(f"{FILENAME}.db")
+TABLESIZE = 3
+CONTROLLER = "+18125577095"
+FROZEN = False
 
 # begin definition of default dict keys for players
 CALLERNAME = "Caller_name"
@@ -64,15 +72,18 @@ def dict_default():
 players_database = defaultdict(dict_default)
 players_database["root"] = "root"
 
+# Save a dictionary into a pickle file.
+# TODO put all of pickle code into seperate .py file and import
 
-FILENAME = "SpeedTrivia.py"
-FILENAME_PATHOBJ = Path(__file__)
-PROGRAM_START_TIME = dt.datetime.now(pytz.timezone("UTC"))
+# export commands GetDB() and PutDB()
+logger.debug(f'Trying to recover database: {DATABASE_PATHOBJ.name}')
+if DATABASE_PATHOBJ.exists():
+    logger.info("Recovering pickle database...")
+    players_database = pickle.load(open(DATABASE_PATHOBJ, "rb"))
+else:
+    logger.info("Creating new pickle database...")
+    pickle.dump(players_database, open(DATABASE_PATHOBJ, "wb"))
 
-DATABASE_PATHOBJ = Path(f"{FILENAME}.db")
-TABLESIZE = 3
-CONTROLLER = "+18125577095"
-FROZEN = False
 
 tables = (
     list()
@@ -82,6 +93,7 @@ TABLE_ASSIGNED = dict()  # A global that is defined within the 'ShuffleTables' f
 # consisting of an entry for each player with the name of their table. (it has not been locked in during the shuffle process and gets locked in during the start function.)
 TONIGHTS_PLAYERS = list()  # A global defined within the 'ShuffleTables' function
 
+# load the team name suggestions.
 POSSIBLE_TEAM_NAMES = []
 with open('team_names.txt', 'r') as fh:
     POSSIBLE_TEAM_NAMES = fh.readlines()

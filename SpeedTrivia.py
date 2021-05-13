@@ -53,7 +53,8 @@ CRAZY FUTURE FUNCTIONALITY:
     
 """
 
-
+import random
+import time
 import datetime as dt
 import sys
 from pprint import pformat as pprint_dicts
@@ -585,18 +586,6 @@ if __name__ == "__main__":
         ]
 
         Send_SMS("SpeedTrivia program start.", CONTROLLER)
-
-        # Save a dictionary into a pickle file.
-        import pickle  # TODO put all of pickle code into seperate .py file and import
-
-        # export commands GetDB() and PutDB()
-        logger.debug(f'Trying to recover database: {DATABASE_PATHOBJ.name}')
-        if DATABASE_PATHOBJ.exists():
-            logger.info("Recovering pickle database...")
-            players_database = pickle.load(open(DATABASE_PATHOBJ, "rb"))
-        else:
-            logger.info("Creating new pickle database...")
-            pickle.dump(players_database, open(DATABASE_PATHOBJ, "wb"))
 
         logger.info("Instantiating Flask App:")
         SpeedTriviaApp = Flask(__name__)
