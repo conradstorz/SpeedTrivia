@@ -601,6 +601,7 @@ if __name__ == "__main__":
             memory_footprint = sys.getallocatedblocks()
             logger.debug(f"Running program footprint is: {memory_footprint}")
             logger.info("Message received:")
+            # recover SMS details from Twillio. This functionality is magic.
             sms_body = request.values.get("Body", None)
             sms_from = request.values.get("From", None)
             sms_MSID = request.values.get("MessageSid", None)
