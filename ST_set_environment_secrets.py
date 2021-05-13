@@ -1,4 +1,4 @@
-"""Decrypt tokens and secrets with user supplied password.
+"""Decrypt tokens and secrets with user supplied password then inject values into environment.
 """
 
 import os
@@ -6,8 +6,8 @@ import sys
 from cryptocode import decrypt
 
 # Find these values at https://twilio.com/user/account
-# Encrypt with encrypt_data.py using a secure password and place result here.
-# Running decrypt_data.py will set environment variables to original value with user provided correct password.
+# Encrypt with ST_encrypt_data.py using a secure password and place result here.
+# Running ST_set_environment_secrets.py will set environment variables to original value with user provided correct password.
 encrypted_account_sid = "vWFFuntfUAPQe/FTupv1OXV8AXWG5AaG8fzQp2ecunL7HA==*lmK4CGQhJTdlnZIJiVFmvQ==*DBCDTrmMz+oWPxgizpVkAA==*kaO0xIle1JPlQFS8syKmwQ=="
 encrypted_auth_token = "LJ0ctrM7RN1N7JS2tIm5hvfVX+F85RQmb8pXpyxYE+g=*Z5nguaX60YPaM7zs2r//Ew==*EMZDFrrPZfZsWVoehWZEug==*33yCyWvj08vvbYliZcAVuQ=="
 
