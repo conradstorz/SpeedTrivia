@@ -87,7 +87,9 @@ def Respond_to(msid, sms_from, body_of_sms):
         == "Hello! I don't have your number in my records. Could you please tell me your name?"
     ):
         return response
-    elif 'Glad to meet you. Welcome to SpeedTrivia.' in response:  # new player name has been found and entered.
+    elif (
+        "Glad to meet you. Welcome to SpeedTrivia." in response
+    ):  # new player name has been found and entered.
         return response
     cmnds = COMMANDS.keys()
     # logger.info(cmnds)
@@ -165,7 +167,7 @@ def update_caller_database(msid, sms_from, body_of_sms):
 @logger.catch
 def ask_caller_their_name():
     logger.info("First time caller.")
-    Send_SMS("New Caller logged.", CONTROLLER)    
+    Send_SMS("New Caller logged.", CONTROLLER)
     logger.info("Asking the caller their name.")
     return "Hello! I don't have your number in my records. Could you please tell me your name?"
 
@@ -189,6 +191,7 @@ def check_sms_for_name(msid, sms_from, body_of_sms):
         return "Sorry. I didn't understand.  Please try again. Feel free to speak in full sentences."
     return f"Thanks {callername}! Glad to meet you. Welcome to SpeedTrivia."
 
+
 @logger.catch
 def ProperNounExtractor(text):
     # if text is only a single word, like 'Doug', this routine does not identify it as a name.
@@ -201,6 +204,7 @@ def ProperNounExtractor(text):
             if tag == "NNP":  # If the word is a proper noun
                 return word
     return None
+
 
 @logger.catch
 def how_long_ago_is(past_time):
@@ -264,8 +268,8 @@ def SetTeamName(msid, sms_from, body_of_sms):
 def list_players_in_database(tonight=False):
     tp_list = []
     for k in players_database.keys():
-        if (len(k) == 12) and (
-            k[0] == "+"
+        if (
+            (k != None) and (len(k) == 12) and (k[0] == "+")
         ):  # ignore entries that are not phone numbers
             # Entries that are not phone numbers are system variables for internal use.
             # TODO this could be made more robust with a regex ('+1dddddddddd')
@@ -297,7 +301,7 @@ def ReturnStatus(msid, sms_from, body_of_sms):
 def SuggestFunny(msid, sms_from, body_of_sms):
     """Return some ideas for team names."""
     logger.info("Funny team name suggestions function entered.")
-    result = ''
+    result = ""
     while len(result) < 140:
         result = result + random.choice(POSSIBLE_TEAM_NAMES)
     return result
@@ -534,6 +538,7 @@ def Send_players_list(msid, sms_from, body_of_sms):
     message = "".join(player_list)
     logger.debug(message)
     return message
+
 
 if __name__ == "__main__":
     try:

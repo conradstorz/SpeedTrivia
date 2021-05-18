@@ -46,7 +46,12 @@ def Is_Valid(number):
 def Send_SMS(text, receipient):
     # TODO place a block on SMS between 10pm and 8am
     logger.info(f"Sending: '{text}' :->to->: {receipient}")
-    if (text is str) and (len(text) >  0):
+    if (type(text) is str) and (len(text) >  0) and (len(text) < 420):
         if Is_Valid(receipient):
             CLIENT.messages.create(body=text, from_=TWILLIO_SMS_NUMBER, to=receipient)
+            logger.debug('Message sent.')  # Mostly this entry is for timestamping the Twilio process time.
+        else:
+            logger.error(f'Destination not valid: {receipient} no message sent.')
+    else:
+        logger.error(f'Message is not valid or too long: {text}')
     return
