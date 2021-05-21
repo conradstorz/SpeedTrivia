@@ -143,6 +143,16 @@ def Pass_(value, field_id):
 
 # Define the details of each page of the JotForm. This variable lays out the correct function to use,
 #  The ID of the field on the JotForm, and the valid responses inside that field.
+# hint -> Dict[str (roundname):  # 9 rounds defined.
+#             Dict[str (formFieldNames):  # 6 field definitions per form even if not used that round.
+#                 Dict[str (fieldID): str (definedByJotform),
+#                      str (fieldFunction): Callable (SeleniumAction),
+#                      str (validValues): str or list (1 or more strings defining valid field values),
+#                       # TODO this should probably be a list ALWAYS with 0 to n strings.
+#                 ],
+#             ],
+#         ]:
+
 WEBFORM = {
     ROUND_1: {
         TEAM_NAME_FIELD: {
@@ -442,14 +452,14 @@ def Fill_and_submit_trivia_form(data, Send=False):
     Round 1 and Round 2 forms are identical differing only in the 'field labels' in use.
     Halftime and FinalRound are the same but use 4 answer boxes. These rounds require
     the 'answer' and 'field' variable to be a list of 4 items each corresponding to
-    the box 'field label' and 'answer text' for each of the four answers.
+    the answerbox 'field label' and 'answer text' for each of the four answers.
     Tiebrasker round is different in that it only has an answer and no points field.
     Example data dictionary:
     {   TEAM: "My Team Name",
-        ROUND: "1",  # values are 1-6, Halftime, Final, Tiebreaker
-        QUESTION: "2",  # values are 1-3
-        POINTS: "6",  # firstround is 2,4,6  secondround is 5,7,9
-        ANSWER: "Place your answer here",
+        ROUND: "1",  # strings are 1-6, Halftime, Final, Tiebreaker
+        QUESTION: "2",  # strings are '1', '2' or '3'
+        POINTS: "6",  # firstround is '2','4','6'  secondround is '5','7','9'
+        ANSWER: "Place your answer string here",
         SUBMIT: True,  # use False for testing.
     }
     """
@@ -487,14 +497,18 @@ def Fill_and_submit_trivia_form(data, Send=False):
         """
         return True  # TODO make this work as described.
 
+    # Initialize Selenium
     browser_token = webdriver.Chrome()
     browser_token.implicitly_wait(2)
     browser_token.get(THE_JOTFORM_URL)
-    logger.debug(f"\n{pprint_dicts(data)}")
+    logger.debug(f'Browser Token is: {browser_token}')
+    logger.debug(f"Form data to be submitted:\n{pprint_dicts(data)}")
     # check the supplied data object
+    # TODO gather data validation routines and test before initializing webform.
     if data[ROUND] in WEBFORM.keys():
+        # collect the details for this round for readability.
         fields_and_functions = WEBFORM[data[ROUND]]
-        logger.debug(f"\n{pprint_dicts(fields_and_functions)}")
+        logger.debug(f"Fields and functions to be filled:\n{pprint_dicts(fields_and_functions)}")
     else:
         logger.error(f"Bad round name: {data[ROUND]}")
         # CANCEL form submission and inform user.
@@ -502,14 +516,16 @@ def Fill_and_submit_trivia_form(data, Send=False):
         return f"Submit failed. Bad round name: {data[ROUND]}"
     # check the user provided round number/name
     # fill the provided 'Round' value on the form first.
+    # remove 'round' and 'submit' from data. The other values are applied in a for loop.
+    #  The round and submit must be applied first and last so require special hamdling. 
     Round = data.pop(ROUND)
-    Submit = data.pop(
-        SUBMIT
-    )  # TODO check this value to be sure it exists and is a bool
+    Submit = data.pop(SUBMIT)  
+    # TODO check this value to be sure it exists and is a bool
+    # readability step
     legal_responses = fields_and_functions[ROUND][VALID_RESPONSES]
     if Round in legal_responses:
         logger.debug("Ready to set the round field of form.")
-        # the Round field changes the form fields that are available
+        # the Round field changes the form fields that are available so set that first.
         fields_and_functions[ROUND][PROPER_FUNCTION](
             browser_token, Round, fields_and_functions[ROUND][FORM_FIELD_ID]
         )
@@ -521,16 +537,17 @@ def Fill_and_submit_trivia_form(data, Send=False):
         browser_token.close()
         return f"Submit failed. Acceptable Round values are {legal_responses}"
     # form is now initialized to accept the correct data
+    # readability step
     valid_fields = fields_and_functions.keys()
     # TODO check that 'data' has an entry for each required field.
     # Fields that are constrained to an empty list '[]' are not required.
     if is_complete(data, valid_fields) == False:
-        logger.error(f"Incomplete data for specified form:\n{pprint_dicts(data)}")
+        message = f"Submit failed. Incomplete data for specified form:\n{pprint_dicts(data)}"
+        logger.error(message)
         # CANCEL form submission and inform user.
         browser_token.close()
-        return (
-            f"Submit failed. Incomplete data for specified form:\n{pprint_dicts(data)}"
-        )
+        return message
+    # time to apply each of the field values to the form
     for current_field, value in data.items():
         if current_field in valid_fields:
             legal_responses = fields_and_functions[current_field][VALID_RESPONSES]
@@ -578,6 +595,7 @@ def Fill_and_submit_trivia_form(data, Send=False):
 def main():
     """When running this file directly apply test data to a live webform (testing)
     This will eventually be moved to a test_Selenium.py file.
+    # TODO use Hypothesis module to hammer this data
     """
     # setup some sample answers for testing
     sample_answers = {
