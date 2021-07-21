@@ -577,7 +577,7 @@ if __name__ == "__main__":
             "time": ReturnHelpInfo,  # return the HELP file with info on start time of game.
             "Helpme": ReturnHelpInfo,  # return the HELP file with info on using the app.
             "Shuffle": ShuffleTables,  # CONTROLLER ONLY: re-shuffle table assignments.
-            "Start": StartGame,  # CONTROLLER ONLY: Lock-in the table assignments for thid game night.
+            "Start": StartGame,  # CONTROLLER ONLY: Lock-in the table assignments for this game night.
             "Size": ChangeTeamSize,  # CONTROLLER ONLY: Change the number of players per table.
             "Announcement": Send_Announcement,  # CONTROLLER ONLY: Make a SMS note to all registered players.
             "PlayersList": Send_players_list,  # CONTROLLER ONLY: Return a list of ALL players to CONTROLLER.
