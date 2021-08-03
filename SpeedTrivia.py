@@ -546,6 +546,7 @@ if __name__ == "__main__":
         # Begin logging definition
         logger.remove()  # removes the default console logger provided by Loguru.
         # I find it to be too noisy with details more appropriate for file logging.
+        # TODO create a console output for logging events that are ERROR level and above.
         # create a new log file for each run of the program
         logger.add(
             f"{FILENAME}_{PROGRAM_START_TIME.strftime('%Y%m%d_%H%M%S%Z')}.log",
