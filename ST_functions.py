@@ -12,6 +12,9 @@ from ST_common import *
 from ST_Twilio import Send_SMS
 from Webform_filler import Check_for_webform_answer_submission
 
+UNKNOWN_CALLER = 0
+NAMED_CALLER = 234
+NEW_CALLER = 123
 
 @logger.catch
 def Respond_to(msid, sms_from, body_of_sms):
@@ -25,16 +28,11 @@ def Respond_to(msid, sms_from, body_of_sms):
     Returns:
         str: The string sent back to the caller.
     """
-    response = update_caller_database(msid, sms_from, body_of_sms)
+    response, caller_type = update_caller_database(msid, sms_from, body_of_sms)
     logger.info(pprint_dicts(players_database[sms_from]))
-    if (
-        response
-        == "Hello! I don't have your number in my records. Could you please tell me your name?"
-    ):
+    if caller_type == NEW_CALLER:
         return response
-    elif (
-        "Glad to meet you. Welcome to SpeedTrivia." in response
-    ):  # new player name has been found and entered.
+    if caller_type == NAMED_CALLER: # new player name has been found and entered.
         return response
     cmnds = COMMANDS.keys()
     # logger.info(cmnds)
@@ -93,6 +91,7 @@ def Respond_to(msid, sms_from, body_of_sms):
 
 @logger.catch
 def update_caller_database(msid, sms_from, body_of_sms):
+    caller_type = UNKNOWN_CALLER
     response = f"The Robots are coming!  LoL  Head for the hills {players_database[sms_from][CALLERNAME]}"
     players_database[sms_from][MESSAGE_HISTORY].append((body_of_sms, msid))
     messages_list = players_database[sms_from][MESSAGE_HISTORY]
@@ -101,20 +100,20 @@ def update_caller_database(msid, sms_from, body_of_sms):
     logger.info(f"Caller's Name: {players_database[sms_from][CALLERNAME]}")
     if players_database[sms_from][FIRSTCALL] == None:
         players_database[sms_from][FIRSTCALL] = dt.datetime.now(pytz.timezone("UTC"))
-        response = ask_caller_their_name()
+        caller_type, response = ask_caller_their_name()
     else:
         if players_database[sms_from][CALLERNAME] == "":
             response = check_sms_for_name(msid, sms_from, body_of_sms)
     players_database[sms_from][RECENTCALL] = dt.datetime.now(pytz.timezone("UTC"))
-    return response
+    return caller_type, response
 
 
 @logger.catch
 def ask_caller_their_name():
     logger.info("First time caller.")
-    Send_SMS("New Caller logged.", CONTROLLER)
+    Send_SMS("New Caller logged.", CONTROLLER) # send a status update to the primary user
     logger.info("Asking the caller their name.")
-    return "Hello! I don't have your number in my records. Could you please tell me your name?"
+    return UNKNOWN_CALLER, "Hello! I don't have your number in my records. Could you please tell me your name?"
 
 
 @logger.catch

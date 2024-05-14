@@ -65,6 +65,9 @@ from ST_functions import *
 # Constants
 FILENAME = "logfile"
 PROGRAM_START_TIME = dt.now()
+# TODO command strings and their associated functions need to be declared seperately so that i can break up functions into different files avoid circular references
+# TODO example, COMMANDS = {'WebForm': None, 'Status': None, ...}
+# TODO so if any string is equal to None then the function has not yet been defined
 COMMANDS = {
     "Commands": ReturnListOfCommands,  # return this list of keys.
     "Webform": Send_Webform_help,  # provide a clickable link to the webform.
