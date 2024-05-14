@@ -99,6 +99,7 @@ CONTROLLER_ONLY_COMMANDS = [
 # Command Functions
 def ReturnListOfCommands(msid, sms_from, body_of_sms):
     # Return a list of available commands.
+    # TODO check to see if all commands have been assigned functions
     return str(COMMANDS.keys())
 
 # Add more command function definitions here like Send_Webform_help, Send_common_commands_help, etc.
