@@ -20,7 +20,7 @@ def Respond_to(msid, sms_from, body_of_sms):
     Args:
         msid (str)): Twilio message ID
         sms_from (str): 12 character phone number
-        body_of_sms (str): Actual text os incoming SMS
+        body_of_sms (str): Actual text of incoming SMS
 
     Returns:
         str: The string sent back to the caller.
